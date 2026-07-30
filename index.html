@@ -6,6 +6,7 @@
 <title>Inhala&Co</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
     --green-950:#0b1f16;
@@ -295,6 +296,7 @@ const ICONS = {
   trend: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg>',
   money: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2.5 0 0 1 2.5-1.5c1.4 0 2.5.9 2.5 2s-1 1.6-2.5 2-2.5.8-2.5 2 1.1 2 2.5 2a2.5 2.5 0 0 0 2.5-1.5"/></svg>',
   layers: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18 8.53 4.4a1 1 0 0 1 0 1.78l-8.53 4.4a2 2 0 0 1-1.66 0L2.64 8.36a1 1 0 0 1 0-1.78l8.53-4.4a2 2 0 0 1 1.66 0Z"/><path d="m22 12.5-8.53 4.4a2 2 0 0 1-1.66 0L2 12.5"/><path d="m22 17.5-8.53 4.4a2 2 0 0 1-1.66 0L2 17.5"/></svg>',
+  upload: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3"/><path d="m7 8 5-5 5 5"/><path d="M20 16v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4"/></svg>',
 };
 
 /* ---------- State ---------- */
@@ -590,22 +592,18 @@ function renderProductos(){
       </div>
       <span class="pill-count">${fmtInt(all.length)} producto${all.length===1?'':'s'}</span>
       <div style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn secondary" id="btnImportPrices">${ICONS.upload} Importar precios</button>
         <button class="btn secondary" id="btnBulkPrice">${ICONS.layers} Ajustar precios por lote</button>
         <button class="btn" id="btnNewProduct">${ICONS.plus} Nuevo producto</button>
       </div>
     </div>
 
     <div class="toolbar" style="margin-top:-6px;">
-      <span class="hint" style="margin:0 2px 0 0; font-weight:700; color:var(--ink-soft);">Categoría:</span>
-      <div class="chip-row" id="pCategoryChips">
-        <button class="chip ${pf.category==='all'?'active':''}" data-cat="all">Todas</button>
-        ${cats.map(c=>{
-          const col = categoryColor(c);
-          const active = pf.category===c;
-          const activeStyle = active ? `background:${col.bg};color:${col.fg};border-color:${col.border};` : '';
-          return `<button class="chip" data-cat="${esc(c)}" style="${activeStyle}"><span class="cat-dot" style="background:${col.dot};"></span>${esc(c)}</button>`;
-        }).join('')}
-      </div>
+      <label for="pCategoryFilter" class="hint" style="margin:0 2px 0 0; font-weight:700; color:var(--ink-soft);">Categoría:</label>
+      <select id="pCategoryFilter" style="min-width:230px; max-width:100%;">
+        <option value="all">Todas las categorías</option>
+        ${cats.map(c=>`<option value="${esc(c)}" ${pf.category===c?'selected':''}>${esc(c)} (${fmtInt(PRODUCTS.filter(p=>p.category===c).length)})</option>`).join('')}
+      </select>
     </div>
 
     ${selectedSkus.size>0 ? `
@@ -661,8 +659,9 @@ function renderProductos(){
 
   $('#pSearch').oninput = e => { pf.search = e.target.value; pf.page=1; withFocusPreserved(renderProductos); };
   $all('[data-status]').forEach(b => b.onclick = () => { pf.status = b.dataset.status; pf.page=1; renderProductos(); });
-  $all('[data-cat]').forEach(b => b.onclick = () => { pf.category = b.dataset.cat; pf.page=1; renderProductos(); });
+  $('#pCategoryFilter').onchange = e => { pf.category = e.target.value; pf.page=1; renderProductos(); };
   $('#btnNewProduct').onclick = () => openProductModal(null);
+  $('#btnImportPrices').onclick = openPriceImportModal;
   $('#btnBulkPrice').onclick = () => openBulkPriceModal();
   if($('#btnBulkFromSelection')) $('#btnBulkFromSelection').onclick = () => openBulkPriceModal('sel');
   if($('#btnClearSelection')) $('#btnClearSelection').onclick = () => { selectedSkus.clear(); renderProductos(); };
@@ -967,6 +966,127 @@ function openBulkPriceModal(defaultScope){
     renderProductos();
     if(VIEW==='dashboard') renderDashboard();
   };
+}
+
+/* ---------- Importación de precios (Excel / CSV / captura) ---------- */
+function normalizedText(value){
+  return String(value==null?'':value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' ');
+}
+function moneyValue(value){
+  if(typeof value==='number') return Number.isFinite(value) ? value : NaN;
+  let s = String(value==null?'':value).trim().replace(/\$/g,'').replace(/\s/g,'');
+  if(!s) return NaN;
+  if(s.includes('.') && s.includes(',')) s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g,'').replace(',', '.') : s.replace(/,/g,'');
+  else if(s.includes(',')) s = s.replace(',', '.');
+  return Number(s.replace(/[^0-9.-]/g,''));
+}
+function productLookup(value, isSku){
+  const v = normalizedText(value);
+  if(!v) return null;
+  if(isSku) return PRODUCTS.find(p=>normalizedText(p.sku)===v) || null;
+  return PRODUCTS.find(p=>normalizedText(p.name)===v) || null;
+}
+function rowsToUpdates(rows){
+  const updates = [], ignored = [];
+  rows.forEach((row, index) => {
+    const clean = {};
+    Object.keys(row||{}).forEach(k=> clean[normalizedText(k)] = row[k]);
+    const sku = clean.sku ?? clean.codigo ?? clean['cod producto'] ?? clean['codigo producto'];
+    const name = clean.producto ?? clean.nombre ?? clean.descripcion ?? clean.articulo;
+    const price = clean['precio venta'] ?? clean.venta ?? clean.precio ?? clean['precio lista'] ?? clean.pvp;
+    const cost = clean.costo ?? clean['precio costo'] ?? clean['costo compra'];
+    const p = productLookup(sku, true) || productLookup(name, false);
+    const sale = moneyValue(price), purchase = moneyValue(cost);
+    if(!p || (isNaN(sale) && isNaN(purchase))){ ignored.push(index+2); return; }
+    updates.push({sku:p.sku, name:p.name, price:isNaN(sale)?null:Math.max(0,sale), cost:isNaN(purchase)?null:Math.max(0,purchase)});
+  });
+  const unique = new Map(); updates.forEach(u=>unique.set(u.sku,u));
+  return {updates:[...unique.values()], ignored};
+}
+function openPriceImportModal(){
+  showModal(`
+    <div class="modal-head"><h3>${ICONS.upload} Importar precios</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
+    <div class="modal-body">
+      <div class="hint" style="margin:0 0 14px;">El archivo actualiza únicamente productos que coincidan por <b>SKU</b>. Si no hay SKU, busca coincidencia exacta por <b>Producto</b>. Primero muestra una vista previa y recién después confirma los cambios.</div>
+      <div class="field-row">
+        <div>
+          <label class="field-label">Planilla de precios</label>
+          <input id="priceSheetFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="width:100%;">
+          <div class="hint">Admite Excel (.xlsx, .xls) y CSV. Columnas: SKU o Producto, Precio de venta, Precio de costo.</div>
+        </div>
+        <div>
+          <label class="field-label">Captura o foto de una planilla</label>
+          <input id="priceImageFile" type="file" accept="image/*" style="width:100%;">
+          <div class="hint">Lee una tabla visible con SKU y precio; después muestra los datos detectados para confirmar.</div>
+        </div>
+      </div>
+      <div id="priceImportState" class="hint" style="display:none; margin-top:14px; padding:10px 12px; background:var(--green-50); border:1px solid var(--green-100); border-radius:8px;"></div>
+    </div>
+    <div class="modal-foot"><button class="btn secondary" data-close>Cerrar</button></div>
+  `);
+  $('#priceSheetFile').onchange = e => { if(e.target.files[0]) importPriceSheet(e.target.files[0]); };
+  $('#priceImageFile').onchange = e => { if(e.target.files[0]) importPriceImage(e.target.files[0]); };
+}
+function showImportState(message, isError){
+  const el = $('#priceImportState');
+  if(!el) return;
+  el.style.display='block'; el.style.background=isError?'var(--red-bg)':'var(--green-50)'; el.style.borderColor=isError?'#efc0bb':'var(--green-100)'; el.textContent=message;
+}
+function previewPriceUpdates(result, source){
+  const {updates, ignored} = result;
+  if(!updates.length){ showImportState('No se encontraron filas válidas. Revisá que haya SKU o Producto y una columna de precio.', true); return; }
+  showModal(`
+    <div class="modal-head"><h3>Revisar importación</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
+    <div class="modal-body">
+      <div class="hint" style="margin:0 0 12px;">${esc(source)}: se actualizarán ${fmtInt(updates.length)} producto${updates.length===1?'':'s'}${ignored.length?`; se omitieron ${fmtInt(ignored.length)} fila${ignored.length===1?'':'s'} sin coincidencia o sin precio`:''}.</div>
+      <div style="max-height:330px; overflow:auto;"><table><thead><tr><th>Producto</th><th style="text-align:right;">Venta nueva</th><th style="text-align:right;">Costo nuevo</th></tr></thead><tbody>
+      ${updates.slice(0,100).map(u=>`<tr><td><div class="strong">${esc(u.name)}</div><div class="muted">SKU ${esc(u.sku)}</div></td><td class="num" style="text-align:right;">${u.price===null?'Sin cambio':fmt(u.price)}</td><td class="num" style="text-align:right;">${u.cost===null?'Sin cambio':fmt(u.cost)}</td></tr>`).join('')}
+      </tbody></table></div>${updates.length>100?`<div class="hint" style="margin-top:8px;">Se muestran los primeros 100 resultados.</div>`:''}
+    </div>
+    <div class="modal-foot"><button class="btn secondary" data-close>Cancelar</button><button class="btn" id="applyImportedPrices">${ICONS.check} Confirmar actualización</button></div>
+  `);
+  $('#applyImportedPrices').onclick = async () => {
+    const bySku = new Map(updates.map(u=>[u.sku,u]));
+    PRODUCTS.forEach(p=>{ const u=bySku.get(p.sku); if(u){ if(u.price!==null) p.price=u.price; if(u.cost!==null) p.cost=u.cost; } });
+    await persistProducts(); closeModal(); toast(`Precios actualizados en ${fmtInt(updates.length)} producto${updates.length===1?'':'s'}`); renderProductos(); if(VIEW==='dashboard') renderDashboard();
+  };
+}
+function importPriceSheet(file){
+  const lower = file.name.toLowerCase();
+  const reader = new FileReader();
+  reader.onerror = () => showImportState('No se pudo leer el archivo.', true);
+  reader.onload = () => {
+    try{
+      let rows;
+      if(lower.endsWith('.csv')){
+        const text = String(reader.result||''); const lines = text.split(/\r?\n/).filter(Boolean); const sep = (lines[0]||'').includes(';') ? ';' : ',';
+        const headers = (lines.shift()||'').split(sep).map(s=>s.replace(/^"|"$/g,'').trim());
+        rows = lines.map(line=>{ const cells=line.split(sep).map(s=>s.replace(/^"|"$/g,'').trim()); return Object.fromEntries(headers.map((h,i)=>[h,cells[i]??''])); });
+      } else {
+        if(!window.XLSX) throw new Error('La librería para leer Excel no está disponible. Verificá la conexión y volvé a abrir la aplicación.');
+        const wb = XLSX.read(reader.result, {type:'array'}); rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+      }
+      const result = rowsToUpdates(rows); previewPriceUpdates(result, file.name);
+    }catch(err){ showImportState(err.message || 'El archivo no tiene un formato válido.', true); }
+  };
+  if(lower.endsWith('.csv')) reader.readAsText(file, 'UTF-8'); else reader.readAsArrayBuffer(file);
+}
+function loadOcr(){
+  if(window.Tesseract) return Promise.resolve();
+  return new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'; s.onload=resolve; s.onerror=()=>reject(new Error('No se pudo cargar el lector de imágenes.')); document.head.appendChild(s); });
+}
+async function importPriceImage(file){
+  showImportState('Leyendo la captura. Esto puede tardar unos segundos.', false);
+  try{
+    await loadOcr();
+    const out = await Tesseract.recognize(file, 'spa');
+    const rows = out.data.text.split(/\r?\n/).filter(Boolean).map(line=>{
+      const sku = (line.match(/\b[A-Z0-9-]{3,}\b/i)||[])[0] || '';
+      const prices = line.match(/\$?\s*\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?|\$?\s*\d+(?:\.\d{1,2})?/g) || [];
+      return {SKU:sku, 'Precio de venta':prices.length?prices[prices.length-1]:''};
+    });
+    previewPriceUpdates(rowsToUpdates(rows), file.name);
+  }catch(err){ showImportState(err.message || 'No se pudo leer la imagen.', true); }
 }
 
 /* ================= MODAL helpers ================= */
