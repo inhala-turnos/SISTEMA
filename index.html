@@ -7,8 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<!-- Escaneo de códigos: fallback para navegadores sin BarcodeDetector nativo. -->
-<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
 <style>
   :root{
     --green-950:#0b1f16;
@@ -35,6 +33,7 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
+  html{-webkit-text-size-adjust:100%;}
   body{
     font-family:'Roboto','Google Sans','Segoe UI',Arial,sans-serif;
     background:var(--bg);
@@ -81,9 +80,6 @@
   .sync-status::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--green-500);box-shadow:0 0 0 3px var(--green-100)}
   .sync-status.syncing{color:var(--amber)} .sync-status.syncing::before{background:var(--amber)}
   .sync-status.offline{color:var(--red)} .sync-status.offline::before{background:var(--red);box-shadow:0 0 0 3px var(--red-bg)}
-  .scan-video{width:100%;max-height:360px;min-height:220px;display:block;background:var(--green-950);border-radius:10px;object-fit:cover}
-  .scan-feedback{margin-top:10px;padding:9px 11px;border-radius:8px;background:var(--green-50);color:var(--ink-soft);font-size:12px}
-  .barcode-chip{display:inline-flex;max-width:100%;overflow:hidden;text-overflow:ellipsis;align-items:center;margin-top:7px;padding:6px 9px;border:1px solid var(--green-100);border-radius:7px;background:var(--green-50);color:var(--green-700);font-family:'Roboto Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.2px}
   .payment-box{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.payment-row{display:grid;grid-template-columns:1fr 150px 30px;gap:8px;align-items:center;margin-top:7px}.payment-total{font-size:12px;margin-top:9px;color:var(--ink-soft)}
   .content{padding:26px 30px 60px; flex:1;}
   .view{display:none;}
@@ -268,8 +264,20 @@
     .kpis{grid-template-columns:repeat(2,1fr);}
     .two-col, .pos-grid{grid-template-columns:1fr;}
     .sidebar{width:76px; flex:0 0 76px; padding:18px 8px;}
+    .content{padding:20px 22px 46px;}
+    .topbar{padding:17px 22px;}
   }
   @media(max-width:620px){
+    .sidebar{width:58px; flex:0 0 58px; padding:12px 6px;}
+    .brand{padding-bottom:16px;}
+    .brand-logo{width:38px; height:38px; border-radius:11px;}
+    .nav{gap:4px;}
+    .nav-item{height:42px; padding:8px; border-radius:10px;}
+    .content{padding:14px 12px 32px; overflow:hidden;}
+    .topbar{padding:13px 14px; min-height:64px;}
+    .topbar h1{font-size:17px;}
+    .topbar .sub{display:none;}
+    .sync-status{font-size:10px; margin-top:3px; white-space:nowrap;}
     .settings-grid{grid-template-columns:1fr;}
     .pos-hero{padding:14px; align-items:flex-start;}
     .pos-hero h2{font-size:18px;}
@@ -277,6 +285,7 @@
     .pos-hero .btn svg{margin:0;}
     .pos-panel{padding:14px;}
     .pos-search-row{flex-direction:column;}
+    .pos-search-row .btn{justify-content:center; width:100%;}
     .pos-filter{width:100%;}
     .sale-data-grid{grid-template-columns:1fr;}
     .sale-data-grid .span-2{grid-column:auto;}
@@ -286,6 +295,15 @@
     .cart-subtotal{grid-column:2; grid-row:1; font-size:13px;}
     .qty-ctrl{grid-column:2; grid-row:2;}
     .cart-item > .icon-btn{grid-column:3; grid-row:1 / span 2;}
+    .overlay{padding:8px; align-items:flex-start; overflow:auto;}
+    .modal{max-width:none; max-height:calc(100dvh - 16px); margin:auto 0; border-radius:13px;}
+    .modal-head{padding:14px 16px;}
+    .modal-body{padding:16px; gap:12px;}
+    .modal-foot{padding:12px 16px; position:sticky; bottom:0; background:var(--surface); flex-wrap:wrap;}
+    .modal-foot .btn{flex:1; justify-content:center; min-width:0;}
+    .field-row{grid-template-columns:1fr; gap:10px;}
+    .toast-wrap{left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom));}
+    .toast{width:100%; padding:11px 13px; font-size:12.5px;}
   }
 </style>
 </head>
@@ -422,7 +440,7 @@ const ICONS = {
 };
 
 /* ---------- State ---------- */
-let PRODUCTS = [];   // {sku,name,category,provider,cost,price,stock,minStock,image,barcode?}
+let PRODUCTS = [];   // {sku,name,category,provider,cost,price,stock,minStock,image}
 let SALES = [];       // {id,date,items:[{sku,name,qty,price,cost,total}],total,totalCost,profit}
 let CLIENTS = [];     // {id,name,phone,email,notes}
 const INTERNAL_COVER_URL = document.getElementById('loadingCover').src;
@@ -438,7 +456,6 @@ let CLOUD = null;
 let stopCloudSync = null;
 let syncQueue = [];
 let syncState = { online:navigator.onLine, syncing:false, cloudAlive:false };
-let activeScannerStop = null;
 
 const pf = { search:'', category:'all', status:'all', sortKey:'name', sortDir:'asc', page:1, pageSize:50 };
 const hf = { from:'', to:'', product:'', method:'all', period:'day' };
@@ -526,12 +543,28 @@ function categoryChip(cat, small){
 
 /* ---------- Storage ---------- */
 async function storageGet(key){
-  try{ const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : null; }
-  catch(e){ return null; }
+  // localStorage es el almacenamiento principal en navegador, incluido GitHub Pages y celular.
+  try{
+    const value=window.localStorage.getItem(key);
+    if(value!==null) return JSON.parse(value);
+  }catch(e){ console.warn('localStorage get error', e); }
+  try{
+    if(window.storage && typeof window.storage.get==='function'){
+      const r=await window.storage.get(key, false);
+      return r && r.value!==undefined ? JSON.parse(r.value) : null;
+    }
+  }catch(e){ console.warn('storage get fallback error', e); }
+  return null;
 }
 async function storageSet(key, value){
-  try{ await window.storage.set(key, JSON.stringify(value), false); return true; }
-  catch(e){ console.error('storage error', e); return false; }
+  const serialized=JSON.stringify(value);
+  let localOk=false;
+  try{ window.localStorage.setItem(key, serialized); localOk=true; }
+  catch(e){ console.error('localStorage set error', e); }
+  // Compatibilidad secundaria con el almacenamiento embebido de Work, sin bloquear el guardado del navegador.
+  try{ if(window.storage && typeof window.storage.set==='function') await window.storage.set(key, serialized, false); }
+  catch(e){ console.warn('storage set mirror error', e); }
+  return localOk;
 }
 
 /* ---------- 3 y 4. Estado de sync y cola offline ---------- */
@@ -634,20 +667,30 @@ async function loadData(){
   await Promise.all([cloudSave('products',{products:PRODUCTS,seq:manualSkuSeq}), cloudSave('sales',SALES), cloudSave('clients',CLIENTS), cloudSave('settings',APP_SETTINGS)]);
 }
 async function persistProducts(){
-  if(!await storageSet('inhala_products', PRODUCTS)){ toast('No se pudo guardar el inventario localmente. No cierres la aplicación.', true); throw localWriteError('el inventario'); }
-  return cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq});
+  // Limpia el campo legado de códigos de barras al guardar el inventario.
+  PRODUCTS.forEach(product=>{ if(Object.prototype.hasOwnProperty.call(product,'barcode')) delete product.barcode; });
+  const localOk=await storageSet('inhala_products', PRODUCTS);
+  const cloudOk=await cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq});
+  if(!localOk && !cloudOk){ toast('No se pudo guardar el inventario ni sincronizarlo. No cierres la aplicación.', true); throw localWriteError('el inventario'); }
+  return cloudOk;
 }
 async function persistSales(){
-  if(!await storageSet('inhala_sales', SALES)){ toast('No se pudo guardar la venta localmente. No cierres la aplicación.', true); throw localWriteError('las ventas'); }
-  return cloudSave('sales', SALES);
+  const localOk=await storageSet('inhala_sales', SALES);
+  const cloudOk=await cloudSave('sales', SALES);
+  if(!localOk && !cloudOk){ toast('No se pudo guardar la venta ni sincronizarla. No cierres la aplicación.', true); throw localWriteError('las ventas'); }
+  return cloudOk;
 }
 async function persistClients(){
-  if(!await storageSet('inhala_clients', CLIENTS)){ toast('No se pudo guardar el cliente localmente. No cierres la aplicación.', true); throw localWriteError('los clientes'); }
-  return cloudSave('clients', CLIENTS);
+  const localOk=await storageSet('inhala_clients', CLIENTS);
+  const cloudOk=await cloudSave('clients', CLIENTS);
+  if(!localOk && !cloudOk){ toast('No se pudo guardar el cliente ni sincronizarlo. No cierres la aplicación.', true); throw localWriteError('los clientes'); }
+  return cloudOk;
 }
 async function persistSeq(){
-  if(!await storageSet('inhala_seq', manualSkuSeq)){ toast('No se pudo guardar la secuencia localmente. No cierres la aplicación.', true); throw localWriteError('la secuencia de productos'); }
-  return cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq});
+  const localOk=await storageSet('inhala_seq', manualSkuSeq);
+  const cloudOk=await cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq});
+  if(!localOk && !cloudOk){ toast('No se pudo guardar la secuencia ni sincronizarla. No cierres la aplicación.', true); throw localWriteError('la secuencia de productos'); }
+  return cloudOk;
 }
 function inventoryDuplicateKey(product){
   const normalize = value => String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -675,9 +718,11 @@ async function removeExactInventoryDuplicates(){
 }
 async function persistSettings(){
   APP_SETTINGS = normalizeAppSettings(APP_SETTINGS);
-  if(!await storageSet('inhala_settings', APP_SETTINGS)){ toast('No se pudo guardar la configuración localmente. No cierres la aplicación.', true); throw localWriteError('la configuración'); }
+  const localOk=await storageSet('inhala_settings', APP_SETTINGS);
   applyAppearance();
-  return cloudSave('settings', APP_SETTINGS);
+  const cloudOk=await cloudSave('settings', APP_SETTINGS);
+  if(!localOk && !cloudOk){ toast('No se pudo guardar la configuración ni sincronizarla. No cierres la aplicación.', true); throw localWriteError('la configuración'); }
+  return cloudOk;
 }
 function startCloudSync(){
   if(!CLOUD || stopCloudSync) return;
@@ -868,7 +913,7 @@ function filteredProducts(){
   let list = PRODUCTS;
   if(pf.search.trim()){
     const q = pf.search.trim().toLowerCase();
-    list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || String(p.barcode||'').toLowerCase().includes(q) || (p.provider||'').toLowerCase().includes(q));
+    list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.provider||'').toLowerCase().includes(q));
   }
   if(pf.category!=='all') list = list.filter(p=>p.category===pf.category);
   if(pf.status==='low') list = list.filter(p=>p.stock>0 && p.stock<=p.minStock);
@@ -965,7 +1010,7 @@ function renderProductos(){
     return `<tr data-sku="${esc(p.sku)}">
       <td><input type="checkbox" class="row-select" data-sel="${esc(p.sku)}" ${selectedSkus.has(p.sku)?'checked':''}></td>
       <td>${productThumb(p, 48)}</td>
-      <td class="muted num"><div>SKU ${esc(p.sku)}</div>${p.barcode?`<div style="font:500 10.5px 'Roboto Mono',monospace; margin-top:3px; color:var(--ink-soft);">Cód. barras: ${esc(p.barcode)}</div>`:''}</td>
+      <td class="muted num">${esc(p.sku)}</td>
       <td><div class="strong editable-cell" data-field="name" style="font-size:13px;">${esc(p.name)}</div><div class="muted editable-cell" data-field="provider" style="font-size:11px;">${esc(p.provider||'Sin proveedor')}</div></td>
       <td class="editable-cell" data-field="category">${categoryChip(p.category)}</td>
       <td class="num editable-cell" data-field="cost">${p.cost>0?fmt(p.cost):'<span class="muted">—</span>'}</td>
@@ -1069,10 +1114,10 @@ function confirmDeleteProduct(sku){
   };
 }
 
-function openProductModal(sku, formDraft){
+function openProductModal(sku){
   const editing = !!sku;
   const savedProduct = editing ? PRODUCTS.find(x=>x.sku===sku) : null;
-  const p = {...(savedProduct || {sku:'', name:'', category:'', provider:'', image:'', barcode:'', cost:0, price:0, stock:0, minStock:5}), ...(formDraft||{})};
+  const p = savedProduct || {sku:'', name:'', category:'', provider:'', image:'', cost:0, price:0, stock:0, minStock:5};
   const cats = getCategories();
   showModal(`
     <div class="modal-head"><h3>${editing?'Editar producto':'Nuevo producto'}</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
@@ -1088,11 +1133,6 @@ function openProductModal(sku, formDraft){
       <div>
         <label class="field-label">Nombre del producto</label>
         <input id="fName" style="width:100%;" value="${esc(p.name)}" placeholder="Ej: Barrita de cereal 40g">
-      </div>
-      <div>
-        <label class="field-label">Código de barras (opcional)</label>
-        <div style="display:flex; gap:8px;"><input id="fBarcode" style="width:100%;" value="${esc(p.barcode||'')}" placeholder="EAN, UPC u otro código"><button class="btn secondary" type="button" id="scanProductBarcode">Escanear</button></div>
-        <div id="barcodePreview">${p.barcode?`<span class="barcode-chip">${esc(p.barcode)}</span>`:''}</div>
       </div>
       <div class="field-row">
         <div>
@@ -1151,40 +1191,23 @@ function openProductModal(sku, formDraft){
     const category = $('#fCategory').value.trim() || 'Otros';
     const provider = $('#fProvider').value.trim();
     const image = $('#fImage').value.trim();
-    const barcode = $('#fBarcode').value.trim();
     const cost = Math.max(0, parseFloat($('#fCost').value)||0);
     const price = Math.max(0, parseFloat($('#fPrice').value)||0);
     const stock = Math.max(0, Math.round(parseFloat($('#fStock').value)||0));
     const minStock = Math.max(0, Math.round(parseFloat($('#fMin').value)||0));
-    const duplicate = barcode && PRODUCTS.find(x=>x.sku!==sku && String(x.barcode||'')===barcode);
-    if(duplicate) toast('Advertencia: el código ya pertenece a "'+duplicate.name+'"', true);
     if(editing){
-      Object.assign(savedProduct, {name, category, provider, image, barcode, cost, price, stock, minStock});
+      Object.assign(savedProduct, {name, category, provider, image, cost, price, stock, minStock});
     } else {
       const newSku = 'M-' + String(manualSkuSeq).padStart(4,'0');
       manualSkuSeq++;
       await persistSeq();
-      PRODUCTS.unshift({sku:newSku, name, category, provider, image, barcode, cost, price, stock, minStock});
+      PRODUCTS.unshift({sku:newSku, name, category, provider, image, cost, price, stock, minStock});
     }
     await persistProducts();
     closeModal();
     toast(editing?'Producto actualizado':'Producto creado');
     renderProductos();
     if(VIEW==='dashboard') renderDashboard();
-  };
-  $('#fBarcode').oninput = () => { const code=$('#fBarcode').value.trim(); $('#barcodePreview').innerHTML=code?`<span class="barcode-chip">${esc(code)}</span>`:''; };
-  $('#scanProductBarcode').onclick = () => {
-    const draft = {
-      name:$('#fName').value, category:$('#fCategory').value, provider:$('#fProvider').value,
-      image:$('#fImage').value, cost:$('#fCost').value, price:$('#fPrice').value,
-      stock:$('#fStock').value, minStock:$('#fMin').value
-    };
-    openBarcodeScanner(code => {
-      const duplicate = PRODUCTS.find(x=>x.sku!==sku && String(x.barcode||'')===code);
-      openProductModal(sku, {...draft, barcode:code});
-      toast('Código escaneado: '+code);
-      if(duplicate) toast('Advertencia: el código ya pertenece a "'+duplicate.name+'"', true);
-    });
   };
 }
 
@@ -1346,7 +1369,7 @@ function productLookup(value, isSku){
   return PRODUCTS.find(p=>normalizedText(p.name)===v) || null;
 }
 function rowsToUpdates(rows){
-  const updates = [], ignored = [];
+  const updates = [], candidates = [], ignored = [];
   rows.forEach((row, index) => {
     const clean = {};
     Object.keys(row||{}).forEach(k=> clean[normalizedText(k)] = row[k]);
@@ -1356,11 +1379,17 @@ function rowsToUpdates(rows){
     const cost = clean.costo ?? clean['precio costo'] ?? clean['costo compra'];
     const p = productLookup(sku, true) || productLookup(name, false);
     const sale = moneyValue(price), purchase = moneyValue(cost);
-    if(!p || (isNaN(sale) && isNaN(purchase))){ ignored.push(index+2); return; }
+    if(!p || (isNaN(sale) && isNaN(purchase))){
+      // Una captura de tienda suele traer un nombre distinto al del inventario.
+      // Se conserva como candidato para que se asigne manualmente, sin actualizar productos por error.
+      if(name && (!isNaN(sale) || !isNaN(purchase))) candidates.push({sourceName:String(name), price:isNaN(sale)?null:Math.max(0,sale), cost:isNaN(purchase)?null:Math.max(0,purchase)});
+      else ignored.push(index+2);
+      return;
+    }
     updates.push({sku:p.sku, name:p.name, price:isNaN(sale)?null:Math.max(0,sale), cost:isNaN(purchase)?null:Math.max(0,purchase)});
   });
   const unique = new Map(); updates.forEach(u=>unique.set(u.sku,u));
-  return {updates:[...unique.values()], ignored};
+  return {updates:[...unique.values()], candidates, ignored};
 }
 function openPriceImportModal(){
   showModal(`
@@ -1376,7 +1405,7 @@ function openPriceImportModal(){
         <div>
           <label class="field-label">Captura o foto de una planilla</label>
           <input id="priceImageFile" type="file" accept="image/*" style="width:100%;">
-          <div class="hint">Lee una tabla visible con SKU y precio; después muestra los datos detectados para confirmar.</div>
+          <div class="hint">Lee nombre y precio. Si el nombre de la tienda no coincide con tu inventario, permite asignarlo manualmente antes de actualizar.</div>
         </div>
       </div>
       <div id="priceImportState" class="hint" style="display:none; margin-top:14px; padding:10px 12px; background:var(--green-50); border:1px solid var(--green-100); border-radius:8px;"></div>
@@ -1392,22 +1421,30 @@ function showImportState(message, isError){
   el.style.display='block'; el.style.background=isError?'var(--red-bg)':'var(--green-50)'; el.style.borderColor=isError?'#efc0bb':'var(--green-100)'; el.textContent=message;
 }
 function previewPriceUpdates(result, source){
-  const {updates, ignored} = result;
-  if(!updates.length){ showImportState('No se encontraron filas válidas. Revisá que haya SKU o Producto y una columna de precio.', true); return; }
+  const {updates, candidates=[], ignored} = result;
+  if(!updates.length && !candidates.length){ showImportState('No se encontraron nombre y precio válidos en la imagen. Probá con una captura más nítida.', true); return; }
+  const productOptions = PRODUCTS.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${esc(p.sku)}">${esc(p.name)} · SKU ${esc(p.sku)}</option>`).join('');
   showModal(`
     <div class="modal-head"><h3>Revisar importación</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
     <div class="modal-body">
-      <div class="hint" style="margin:0 0 12px;">${esc(source)}: se actualizarán ${fmtInt(updates.length)} producto${updates.length===1?'':'s'}${ignored.length?`; se omitieron ${fmtInt(ignored.length)} fila${ignored.length===1?'':'s'} sin coincidencia o sin precio`:''}.</div>
+      <div class="hint" style="margin:0 0 12px;">${esc(source)}: ${fmtInt(updates.length)} coincidencia${updates.length===1?'':'s'} automática${updates.length===1?'':'s'}${candidates.length?` y ${fmtInt(candidates.length)} producto${candidates.length===1?'':'s'} para asignar manualmente`:''}${ignored.length?`; se omitieron ${fmtInt(ignored.length)} fila${ignored.length===1?'':'s'} sin nombre o precio`:''}.</div>
       <div style="max-height:330px; overflow:auto;"><table><thead><tr><th>Producto</th><th style="text-align:right;">Venta nueva</th><th style="text-align:right;">Costo nuevo</th></tr></thead><tbody>
       ${updates.slice(0,100).map(u=>`<tr><td><div class="strong">${esc(u.name)}</div><div class="muted">SKU ${esc(u.sku)}</div></td><td class="num" style="text-align:right;">${u.price===null?'Sin cambio':fmt(u.price)}</td><td class="num" style="text-align:right;">${u.cost===null?'Sin cambio':fmt(u.cost)}</td></tr>`).join('')}
-      </tbody></table></div>${updates.length>100?`<div class="hint" style="margin-top:8px;">Se muestran los primeros 100 resultados.</div>`:''}
+      ${candidates.map((c,index)=>`<tr><td><div class="strong">${esc(c.sourceName)}</div><select data-import-map="${index}" style="width:100%; margin-top:6px;"><option value="">No actualizar este producto</option>${productOptions}</select></td><td class="num" style="text-align:right;">${c.price===null?'Sin cambio':fmt(c.price)}</td><td class="num" style="text-align:right;">${c.cost===null?'Sin cambio':fmt(c.cost)}</td></tr>`).join('')}
+      </tbody></table></div>${updates.length+candidates.length>100?`<div class="hint" style="margin-top:8px;">Se muestran los primeros 100 resultados.</div>`:''}
     </div>
     <div class="modal-foot"><button class="btn secondary" data-close>Cancelar</button><button class="btn" id="applyImportedPrices">${ICONS.check} Confirmar actualización</button></div>
   `);
   $('#applyImportedPrices').onclick = async () => {
-    const bySku = new Map(updates.map(u=>[u.sku,u]));
+    const finalUpdates=updates.slice();
+    $all('[data-import-map]').forEach(select=>{
+      const product=PRODUCTS.find(p=>p.sku===select.value), candidate=candidates[Number(select.dataset.importMap)];
+      if(product && candidate) finalUpdates.push({sku:product.sku, name:product.name, price:candidate.price, cost:candidate.cost});
+    });
+    const bySku = new Map(finalUpdates.map(u=>[u.sku,u]));
+    if(!bySku.size){ toast('Seleccioná al menos un producto para actualizar', true); return; }
     PRODUCTS.forEach(p=>{ const u=bySku.get(p.sku); if(u){ if(u.price!==null) p.price=u.price; if(u.cost!==null) p.cost=u.cost; } });
-    await persistProducts(); closeModal(); toast(`Precios actualizados en ${fmtInt(updates.length)} producto${updates.length===1?'':'s'}`); renderProductos(); if(VIEW==='dashboard') renderDashboard();
+    await persistProducts(); closeModal(); toast(`Precios actualizados en ${fmtInt(bySku.size)} producto${bySku.size===1?'':'s'}`); renderProductos(); if(VIEW==='dashboard') renderDashboard();
   };
 }
 function importPriceSheet(file){
@@ -1439,10 +1476,16 @@ async function importPriceImage(file){
   try{
     await loadOcr();
     const out = await Tesseract.recognize(file, 'spa');
-    const rows = out.data.text.split(/\r?\n/).filter(Boolean).map(line=>{
-      const sku = (line.match(/\b[A-Z0-9-]{3,}\b/i)||[])[0] || '';
-      const prices = line.match(/\$?\s*\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?|\$?\s*\d+(?:\.\d{1,2})?/g) || [];
-      return {SKU:sku, 'Precio de venta':prices.length?prices[prices.length-1]:''};
+    const lines=out.data.text.split(/\r?\n/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
+    const rows=[], recentNames=[];
+    lines.forEach(line=>{
+      const prices=line.match(/\$?\s*\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?|\$?\s*\d+(?:\.\d{1,2})?/g) || [];
+      const price=prices.length ? prices[prices.length-1] : '';
+      const nameOnLine=line.replace(/\$?\s*\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?|\$?\s*\d+(?:\.\d{1,2})?/g,'').replace(/[|·]/g,' ').trim();
+      if(price && moneyValue(price)===moneyValue(price)){
+        const name=nameOnLine || recentNames[recentNames.length-1] || '';
+        if(name) rows.push({Producto:name, 'Precio de venta':price});
+      } else if(line.replace(/[^a-záéíóúüñ]/gi,'').length>=3) recentNames.push(line);
     });
     previewPriceUpdates(rowsToUpdates(rows), file.name);
   }catch(err){ showImportState(err.message || 'No se pudo leer la imagen.', true); }
@@ -1455,69 +1498,7 @@ function showModal(html){
   $all('[data-close]', $('#modalBox')).forEach(b=>b.onclick = closeModal);
   $('#overlay').onclick = e => { if(e.target.id==='overlay') closeModal(); };
 }
-function closeModal(){ if(activeScannerStop) activeScannerStop(); $('#overlay').classList.remove('active'); $('#modalBox').innerHTML=''; }
-
-/* ---------- 1. Lector de código de barras con cámara ---------- */
-function loadQuaggaScanner(){
-  if(window.Quagga) return Promise.resolve();
-  return new Promise((resolve,reject)=>{
-    const existing=document.querySelector('script[data-quagga-scanner]');
-    if(existing){ existing.addEventListener('load',resolve,{once:true}); existing.addEventListener('error',reject,{once:true}); return; }
-    const script=document.createElement('script'); script.dataset.quaggaScanner='1'; script.src='https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js';
-    script.onload=resolve; script.onerror=()=>reject(new Error('No se pudo cargar el lector de códigos.')); document.head.appendChild(script);
-  });
-}
-function openBarcodeScanner(onResult, options){
-  const keepOpen=!!(options&&options.keepOpen);
-  let ended=false, locked=false, stream=null, quaggaStarted=false, quaggaHandler=null;
-  const feedback = () => $('#scanFeedback');
-  const cleanup = () => {
-    if(ended) return; ended=true;
-    if(stream) stream.getTracks().forEach(track=>track.stop());
-    if(quaggaStarted && window.Quagga) try{ window.Quagga.stop(); }catch(e){}
-    if(quaggaHandler && window.Quagga && window.Quagga.offDetected) try{ window.Quagga.offDetected(quaggaHandler); }catch(e){}
-    activeScannerStop=null;
-  };
-  const fail = message => { toast(message, true); cleanup(); closeModal(); };
-  showModal(`<div class="modal-head"><h3>Escanear código de barras</h3><button class="icon-btn" data-close>${ICONS.close}</button></div><div class="modal-body"><video id="barcodeVideo" class="scan-video" autoplay muted playsinline></video><div id="scanQuaggaTarget" class="scan-video" style="display:none;"></div><div id="scanFeedback" class="scan-feedback">Solicitando acceso a la cámara…</div></div><div class="modal-foot"><button class="btn secondary" data-close>Cerrar escáner</button></div>`);
-  activeScannerStop=cleanup;
-  const detected = async rawCode => {
-    const code=String(rawCode||'').trim();
-    if(ended || locked || !code) return;
-    locked=true;
-    const notice=feedback(); if(notice){ notice.textContent='Código detectado: '+code; notice.style.background='var(--green-100)'; notice.style.color='var(--green-700)'; }
-    try{ const audio=new (window.AudioContext||window.webkitAudioContext)(); const oscillator=audio.createOscillator(); oscillator.connect(audio.destination); oscillator.frequency.value=880; oscillator.start(); oscillator.stop(audio.currentTime+.08); }catch(e){}
-    if(!keepOpen){ cleanup(); closeModal(); onResult(code); return; }
-    try{ await onResult(code); }catch(e){ console.error(e); }
-    if(!ended){ const next=feedback(); if(next){ next.textContent='Listo. Apuntá al siguiente código.'; next.style.background='var(--green-50)'; next.style.color='var(--ink-soft)'; } setTimeout(()=>{ locked=false; },500); }
-  };
-  const startNative = async () => {
-    try{
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-      const video=$('#barcodeVideo'); if(!video){ cleanup(); return; }
-      video.srcObject=stream; await video.play();
-      const notice=feedback(); if(notice) notice.textContent='Apuntá la cámara al código de barras.';
-      let detector;
-      try{ detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','codabar','itf','qr_code','data_matrix','pdf417','aztec']}); }catch(e){ detector=new BarcodeDetector(); }
-      const loop=async()=>{ if(ended) return; try{ const codes=await detector.detect(video); if(codes[0]) await detected(codes[0].rawValue); }catch(e){} if(!ended) requestAnimationFrame(loop); };
-      loop();
-    }catch(e){ fail('No se pudo acceder a la cámara. Revisá el permiso del navegador.'); }
-  };
-  const startFallback = async () => {
-    try{
-      await loadQuaggaScanner();
-      if(ended) return;
-      $('#barcodeVideo').style.display='none'; const target=$('#scanQuaggaTarget'); target.style.display='block';
-      const notice=feedback(); if(notice) notice.textContent='Apuntá la cámara al código de barras.';
-      window.Quagga.init({inputStream:{type:'LiveStream',target,constraints:{facingMode:'environment'}},decoder:{readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','code_39_reader','codabar_reader','i2of5_reader']}}, err=>{
-        if(err) return fail('No se pudo iniciar el lector. Usá la carga manual.');
-        quaggaStarted=true; quaggaHandler=result=>detected(result&&result.codeResult&&result.codeResult.code); window.Quagga.onDetected(quaggaHandler); window.Quagga.start();
-      });
-    }catch(e){ fail('Este navegador no admite lectura automática de códigos.'); }
-  };
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) fail('Este dispositivo no tiene una cámara disponible.');
-  else if('BarcodeDetector' in window) startNative(); else startFallback();
-}
+function closeModal(){ $('#overlay').classList.remove('active'); $('#modalBox').innerHTML=''; }
 
 /* ================= CLIENTES ================= */
 function clientSaleSummary(clientId){
@@ -1626,7 +1607,7 @@ function renderVenta(){
     <div class="grid pos-grid">
       <div class="card pos-panel">
         <div class="pos-panel-title"><h2>${ICONS.box} Catálogo de productos</h2><span class="pill-count">${fmtInt(PRODUCTS.length)} productos</span></div>
-        <div class="pos-search-row"><div class="search">${ICONS.search}<input id="posSearch" placeholder="Buscar producto por nombre, SKU, código o categoría…" value="${esc(posSearch)}"></div><button class="btn secondary" id="btnScanPos">Escanear producto</button><select class="pos-filter" id="posCategory"><option value="all">Todas las categorías</option>${getCategories().map(c=>`<option value="${esc(c)}" ${posCategory===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+        <div class="pos-search-row"><div class="search">${ICONS.search}<input id="posSearch" placeholder="Buscar producto por nombre, SKU o categoría…" value="${esc(posSearch)}"></div><select class="pos-filter" id="posCategory"><option value="all">Todas las categorías</option>${getCategories().map(c=>`<option value="${esc(c)}" ${posCategory===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
         <div class="pos-results" id="posResults"></div>
       </div>
       <div class="card pos-panel" style="position:sticky; top:96px;">
@@ -1650,11 +1631,6 @@ function renderVenta(){
   `;
   $('#posSearch').oninput = e => { posSearch = e.target.value; renderPosResults(); };
   $('#posCategory').onchange = e => { posCategory=e.target.value; renderPosResults(); };
-  $('#btnScanPos').onclick = () => openBarcodeScanner(code => {
-    const p=PRODUCTS.find(x=>String(x.barcode||'')===code);
-    if(!p){ toast('No se encontró ningún producto con ese código de barras', true); return; }
-    if(addToCart(p.sku)) toast('Producto agregado: '+p.name);
-  }, {keepOpen:true});
   $('#saleClient').onchange = e => { saleDraft.clientId = e.target.value; const c=CLIENTS.find(x=>x.id===e.target.value); if(c && !saleDraft.reference) { saleDraft.reference=c.name; $('#saleReference').value=c.name; } };
   $('#saleReference').oninput = e => { saleDraft.reference = e.target.value; };
   $('#saleNote').oninput = e => { saleDraft.note = e.target.value; };
@@ -1671,7 +1647,7 @@ function renderPosResults(){
   if(!box) return;
   let list = PRODUCTS;
   const q = posSearch.trim().toLowerCase();
-  if(q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || String(p.barcode||'').toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+  if(q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
   if(posCategory!=='all') list = list.filter(p=>p.category===posCategory);
   list = list.slice(0, 60);
   box.innerHTML = list.length ? list.map(p => `
@@ -1680,7 +1656,7 @@ function renderPosResults(){
         ${productThumb(p, 34)}
         <div style="min-width:0;">
           <div class="name">${esc(p.name)}</div>
-          <div class="meta">SKU ${esc(p.sku)}${p.barcode?' · Cód. barras: '+esc(p.barcode):''} · ${esc(p.category)} · ${stockBadge(p)}</div>
+          <div class="meta">SKU ${esc(p.sku)} · ${esc(p.category)} · ${stockBadge(p)}</div>
         </div>
       </div>
       <div style="display:flex; align-items:center;"><div class="price">${fmt(p.price)}</div><span class="add-arrow">›</span></div>
