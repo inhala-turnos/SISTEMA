@@ -81,8 +81,9 @@
   .sync-status::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--green-500);box-shadow:0 0 0 3px var(--green-100)}
   .sync-status.syncing{color:var(--amber)} .sync-status.syncing::before{background:var(--amber)}
   .sync-status.offline{color:var(--red)} .sync-status.offline::before{background:var(--red);box-shadow:0 0 0 3px var(--red-bg)}
-  .scan-video{width:100%;max-height:360px;display:block;background:var(--green-950);border-radius:10px;object-fit:cover}
+  .scan-video{width:100%;max-height:360px;min-height:220px;display:block;background:var(--green-950);border-radius:10px;object-fit:cover}
   .scan-feedback{margin-top:10px;padding:9px 11px;border-radius:8px;background:var(--green-50);color:var(--ink-soft);font-size:12px}
+  .barcode-chip{display:inline-flex;max-width:100%;overflow:hidden;text-overflow:ellipsis;align-items:center;margin-top:7px;padding:6px 9px;border:1px solid var(--green-100);border-radius:7px;background:var(--green-50);color:var(--green-700);font-family:'Roboto Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.2px}
   .payment-box{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.payment-row{display:grid;grid-template-columns:1fr 150px 30px;gap:8px;align-items:center;margin-top:7px}.payment-total{font-size:12px;margin-top:9px;color:var(--ink-soft)}
   .content{padding:26px 30px 60px; flex:1;}
   .view{display:none;}
@@ -421,7 +422,7 @@ const ICONS = {
 };
 
 /* ---------- State ---------- */
-let PRODUCTS = [];   // {sku,name,category,provider,cost,price,stock,minStock,image}
+let PRODUCTS = [];   // {sku,name,category,provider,cost,price,stock,minStock,image,barcode?}
 let SALES = [];       // {id,date,items:[{sku,name,qty,price,cost,total}],total,totalCost,profit}
 let CLIENTS = [];     // {id,name,phone,email,notes}
 const INTERNAL_COVER_URL = document.getElementById('loadingCover').src;
@@ -867,7 +868,7 @@ function filteredProducts(){
   let list = PRODUCTS;
   if(pf.search.trim()){
     const q = pf.search.trim().toLowerCase();
-    list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.provider||'').toLowerCase().includes(q));
+    list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || String(p.barcode||'').toLowerCase().includes(q) || (p.provider||'').toLowerCase().includes(q));
   }
   if(pf.category!=='all') list = list.filter(p=>p.category===pf.category);
   if(pf.status==='low') list = list.filter(p=>p.stock>0 && p.stock<=p.minStock);
@@ -964,7 +965,7 @@ function renderProductos(){
     return `<tr data-sku="${esc(p.sku)}">
       <td><input type="checkbox" class="row-select" data-sel="${esc(p.sku)}" ${selectedSkus.has(p.sku)?'checked':''}></td>
       <td>${productThumb(p, 48)}</td>
-      <td class="muted num">${esc(p.sku)}</td>
+      <td class="muted num"><div>SKU ${esc(p.sku)}</div>${p.barcode?`<div style="font:500 10.5px 'Roboto Mono',monospace; margin-top:3px; color:var(--ink-soft);">Cód. barras: ${esc(p.barcode)}</div>`:''}</td>
       <td><div class="strong editable-cell" data-field="name" style="font-size:13px;">${esc(p.name)}</div><div class="muted editable-cell" data-field="provider" style="font-size:11px;">${esc(p.provider||'Sin proveedor')}</div></td>
       <td class="editable-cell" data-field="category">${categoryChip(p.category)}</td>
       <td class="num editable-cell" data-field="cost">${p.cost>0?fmt(p.cost):'<span class="muted">—</span>'}</td>
@@ -1068,9 +1069,10 @@ function confirmDeleteProduct(sku){
   };
 }
 
-function openProductModal(sku){
+function openProductModal(sku, formDraft){
   const editing = !!sku;
-  const p = editing ? PRODUCTS.find(x=>x.sku===sku) : {sku:'', name:'', category:'', provider:'', cost:0, price:0, stock:0, minStock:5};
+  const savedProduct = editing ? PRODUCTS.find(x=>x.sku===sku) : null;
+  const p = {...(savedProduct || {sku:'', name:'', category:'', provider:'', image:'', barcode:'', cost:0, price:0, stock:0, minStock:5}), ...(formDraft||{})};
   const cats = getCategories();
   showModal(`
     <div class="modal-head"><h3>${editing?'Editar producto':'Nuevo producto'}</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
@@ -1090,6 +1092,7 @@ function openProductModal(sku){
       <div>
         <label class="field-label">Código de barras (opcional)</label>
         <div style="display:flex; gap:8px;"><input id="fBarcode" style="width:100%;" value="${esc(p.barcode||'')}" placeholder="EAN, UPC u otro código"><button class="btn secondary" type="button" id="scanProductBarcode">Escanear</button></div>
+        <div id="barcodePreview">${p.barcode?`<span class="barcode-chip">${esc(p.barcode)}</span>`:''}</div>
       </div>
       <div class="field-row">
         <div>
@@ -1153,8 +1156,10 @@ function openProductModal(sku){
     const price = Math.max(0, parseFloat($('#fPrice').value)||0);
     const stock = Math.max(0, Math.round(parseFloat($('#fStock').value)||0));
     const minStock = Math.max(0, Math.round(parseFloat($('#fMin').value)||0));
+    const duplicate = barcode && PRODUCTS.find(x=>x.sku!==sku && String(x.barcode||'')===barcode);
+    if(duplicate) toast('Advertencia: el código ya pertenece a "'+duplicate.name+'"', true);
     if(editing){
-      Object.assign(p, {name, category, provider, image, barcode, cost, price, stock, minStock});
+      Object.assign(savedProduct, {name, category, provider, image, barcode, cost, price, stock, minStock});
     } else {
       const newSku = 'M-' + String(manualSkuSeq).padStart(4,'0');
       manualSkuSeq++;
@@ -1167,7 +1172,20 @@ function openProductModal(sku){
     renderProductos();
     if(VIEW==='dashboard') renderDashboard();
   };
-  $('#scanProductBarcode').onclick = () => openBarcodeScanner(code => { $('#fBarcode').value=code; toast('Código leído: '+code); });
+  $('#fBarcode').oninput = () => { const code=$('#fBarcode').value.trim(); $('#barcodePreview').innerHTML=code?`<span class="barcode-chip">${esc(code)}</span>`:''; };
+  $('#scanProductBarcode').onclick = () => {
+    const draft = {
+      name:$('#fName').value, category:$('#fCategory').value, provider:$('#fProvider').value,
+      image:$('#fImage').value, cost:$('#fCost').value, price:$('#fPrice').value,
+      stock:$('#fStock').value, minStock:$('#fMin').value
+    };
+    openBarcodeScanner(code => {
+      const duplicate = PRODUCTS.find(x=>x.sku!==sku && String(x.barcode||'')===code);
+      openProductModal(sku, {...draft, barcode:code});
+      toast('Código escaneado: '+code);
+      if(duplicate) toast('Advertencia: el código ya pertenece a "'+duplicate.name+'"', true);
+    });
+  };
 }
 
 /* ---------- Ajuste de precios por lote (categoría / selección / filtro / todo) ---------- */
@@ -1440,37 +1458,65 @@ function showModal(html){
 function closeModal(){ if(activeScannerStop) activeScannerStop(); $('#overlay').classList.remove('active'); $('#modalBox').innerHTML=''; }
 
 /* ---------- 1. Lector de código de barras con cámara ---------- */
-function openBarcodeScanner(onDetected){
-  let stopped=false, stream=null, quaggaStarted=false;
-  const stop = () => {
-    if(stopped) return; stopped=true;
-    if(stream) stream.getTracks().forEach(t=>t.stop());
+function loadQuaggaScanner(){
+  if(window.Quagga) return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script[data-quagga-scanner]');
+    if(existing){ existing.addEventListener('load',resolve,{once:true}); existing.addEventListener('error',reject,{once:true}); return; }
+    const script=document.createElement('script'); script.dataset.quaggaScanner='1'; script.src='https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js';
+    script.onload=resolve; script.onerror=()=>reject(new Error('No se pudo cargar el lector de códigos.')); document.head.appendChild(script);
+  });
+}
+function openBarcodeScanner(onResult, options){
+  const keepOpen=!!(options&&options.keepOpen);
+  let ended=false, locked=false, stream=null, quaggaStarted=false, quaggaHandler=null;
+  const feedback = () => $('#scanFeedback');
+  const cleanup = () => {
+    if(ended) return; ended=true;
+    if(stream) stream.getTracks().forEach(track=>track.stop());
     if(quaggaStarted && window.Quagga) try{ window.Quagga.stop(); }catch(e){}
+    if(quaggaHandler && window.Quagga && window.Quagga.offDetected) try{ window.Quagga.offDetected(quaggaHandler); }catch(e){}
     activeScannerStop=null;
   };
-  activeScannerStop=stop;
-  showModal(`<div class="modal-head"><h3>Escanear código de barras</h3><button class="icon-btn" data-close>${ICONS.close}</button></div><div class="modal-body"><video id="barcodeVideo" class="scan-video" autoplay muted playsinline></video><div id="scanQuaggaTarget" class="scan-video" style="display:none;"></div><div id="scanFeedback" class="scan-feedback">Solicitando acceso a la cámara…</div></div><div class="modal-foot"><button class="btn secondary" data-close>Cancelar</button></div>`);
-  const detected = code => {
-    if(stopped || !code) return; stopped=true;
-    const feedback=$('#scanFeedback'); if(feedback){ feedback.textContent='Código detectado: '+code; feedback.style.background='var(--green-100)'; feedback.style.color='var(--green-700)'; }
-    try{ const a=new (window.AudioContext||window.webkitAudioContext)(); const o=a.createOscillator(); o.connect(a.destination); o.frequency.value=880; o.start(); o.stop(a.currentTime+.08); }catch(e){}
-    setTimeout(()=>{ stop(); closeModal(); onDetected(String(code)); },350);
+  const fail = message => { toast(message, true); cleanup(); closeModal(); };
+  showModal(`<div class="modal-head"><h3>Escanear código de barras</h3><button class="icon-btn" data-close>${ICONS.close}</button></div><div class="modal-body"><video id="barcodeVideo" class="scan-video" autoplay muted playsinline></video><div id="scanQuaggaTarget" class="scan-video" style="display:none;"></div><div id="scanFeedback" class="scan-feedback">Solicitando acceso a la cámara…</div></div><div class="modal-foot"><button class="btn secondary" data-close>Cerrar escáner</button></div>`);
+  activeScannerStop=cleanup;
+  const detected = async rawCode => {
+    const code=String(rawCode||'').trim();
+    if(ended || locked || !code) return;
+    locked=true;
+    const notice=feedback(); if(notice){ notice.textContent='Código detectado: '+code; notice.style.background='var(--green-100)'; notice.style.color='var(--green-700)'; }
+    try{ const audio=new (window.AudioContext||window.webkitAudioContext)(); const oscillator=audio.createOscillator(); oscillator.connect(audio.destination); oscillator.frequency.value=880; oscillator.start(); oscillator.stop(audio.currentTime+.08); }catch(e){}
+    if(!keepOpen){ cleanup(); closeModal(); onResult(code); return; }
+    try{ await onResult(code); }catch(e){ console.error(e); }
+    if(!ended){ const next=feedback(); if(next){ next.textContent='Listo. Apuntá al siguiente código.'; next.style.background='var(--green-50)'; next.style.color='var(--ink-soft)'; } setTimeout(()=>{ locked=false; },500); }
   };
-  navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}).then(async s=>{
-    stream=s; const video=$('#barcodeVideo'); if(!video) return stop(); video.srcObject=s; await video.play();
-    const feedback=$('#scanFeedback'); if(feedback) feedback.textContent='Apuntá la cámara al código de barras.';
-    if('BarcodeDetector' in window){
-      let detector; try{ detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','codabar','itf']}); }catch(e){ detector=new BarcodeDetector(); }
-      const loop=async()=>{ if(stopped) return; try{ const codes=await detector.detect(video); if(codes[0]) return detected(codes[0].rawValue); }catch(e){} requestAnimationFrame(loop); }; loop();
-    }else if(window.Quagga){
-      // QuaggaJS opera sobre el video activo como fallback en navegadores sin API nativa.
-      stream.getTracks().forEach(t=>t.stop()); stream=null; video.style.display='none'; const target=$('#scanQuaggaTarget'); target.style.display='block';
-      window.Quagga.init({inputStream:{type:'LiveStream',target:target,constraints:{facingMode:'environment'}},decoder:{readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','code_39_reader','codabar_reader','i2of5_reader']}}, err=>{
-        if(err){ if(feedback) feedback.textContent='No se pudo iniciar el lector. Usá la búsqueda manual.'; return; }
-        quaggaStarted=true; window.Quagga.onDetected(r=>detected(r&&r.codeResult&&r.codeResult.code)); window.Quagga.start();
+  const startNative = async () => {
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+      const video=$('#barcodeVideo'); if(!video){ cleanup(); return; }
+      video.srcObject=stream; await video.play();
+      const notice=feedback(); if(notice) notice.textContent='Apuntá la cámara al código de barras.';
+      let detector;
+      try{ detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','codabar','itf','qr_code','data_matrix','pdf417','aztec']}); }catch(e){ detector=new BarcodeDetector(); }
+      const loop=async()=>{ if(ended) return; try{ const codes=await detector.detect(video); if(codes[0]) await detected(codes[0].rawValue); }catch(e){} if(!ended) requestAnimationFrame(loop); };
+      loop();
+    }catch(e){ fail('No se pudo acceder a la cámara. Revisá el permiso del navegador.'); }
+  };
+  const startFallback = async () => {
+    try{
+      await loadQuaggaScanner();
+      if(ended) return;
+      $('#barcodeVideo').style.display='none'; const target=$('#scanQuaggaTarget'); target.style.display='block';
+      const notice=feedback(); if(notice) notice.textContent='Apuntá la cámara al código de barras.';
+      window.Quagga.init({inputStream:{type:'LiveStream',target,constraints:{facingMode:'environment'}},decoder:{readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','code_39_reader','codabar_reader','i2of5_reader']}}, err=>{
+        if(err) return fail('No se pudo iniciar el lector. Usá la carga manual.');
+        quaggaStarted=true; quaggaHandler=result=>detected(result&&result.codeResult&&result.codeResult.code); window.Quagga.onDetected(quaggaHandler); window.Quagga.start();
       });
-    }else if(feedback){ feedback.textContent='Este navegador no admite lectura automática. Usá la búsqueda manual.'; }
-  }).catch(err=>{ const feedback=$('#scanFeedback'); if(feedback) feedback.textContent='No se pudo acceder a la cámara. Revisá el permiso del navegador y usá la búsqueda manual.'; }) : (()=>{ const feedback=$('#scanFeedback'); if(feedback) feedback.textContent='Este dispositivo no tiene una cámara disponible.'; })();
+    }catch(e){ fail('Este navegador no admite lectura automática de códigos.'); }
+  };
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) fail('Este dispositivo no tiene una cámara disponible.');
+  else if('BarcodeDetector' in window) startNative(); else startFallback();
 }
 
 /* ================= CLIENTES ================= */
@@ -1580,7 +1626,7 @@ function renderVenta(){
     <div class="grid pos-grid">
       <div class="card pos-panel">
         <div class="pos-panel-title"><h2>${ICONS.box} Catálogo de productos</h2><span class="pill-count">${fmtInt(PRODUCTS.length)} productos</span></div>
-        <div class="pos-search-row"><div class="search">${ICONS.search}<input id="posSearch" placeholder="Buscar producto por nombre, SKU, código o categoría…" value="${esc(posSearch)}"></div><button class="btn secondary" id="btnScanPos">Escanear</button><select class="pos-filter" id="posCategory"><option value="all">Todas las categorías</option>${getCategories().map(c=>`<option value="${esc(c)}" ${posCategory===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+        <div class="pos-search-row"><div class="search">${ICONS.search}<input id="posSearch" placeholder="Buscar producto por nombre, SKU, código o categoría…" value="${esc(posSearch)}"></div><button class="btn secondary" id="btnScanPos">Escanear producto</button><select class="pos-filter" id="posCategory"><option value="all">Todas las categorías</option>${getCategories().map(c=>`<option value="${esc(c)}" ${posCategory===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
         <div class="pos-results" id="posResults"></div>
       </div>
       <div class="card pos-panel" style="position:sticky; top:96px;">
@@ -1604,7 +1650,11 @@ function renderVenta(){
   `;
   $('#posSearch').oninput = e => { posSearch = e.target.value; renderPosResults(); };
   $('#posCategory').onchange = e => { posCategory=e.target.value; renderPosResults(); };
-  $('#btnScanPos').onclick = () => openBarcodeScanner(code => { const p=PRODUCTS.find(x=>String(x.barcode||'')===code); if(p) addToCart(p.sku); else toast('No se encontró ningún producto con el código '+code, true); });
+  $('#btnScanPos').onclick = () => openBarcodeScanner(code => {
+    const p=PRODUCTS.find(x=>String(x.barcode||'')===code);
+    if(!p){ toast('No se encontró ningún producto con ese código de barras', true); return; }
+    if(addToCart(p.sku)) toast('Producto agregado: '+p.name);
+  }, {keepOpen:true});
   $('#saleClient').onchange = e => { saleDraft.clientId = e.target.value; const c=CLIENTS.find(x=>x.id===e.target.value); if(c && !saleDraft.reference) { saleDraft.reference=c.name; $('#saleReference').value=c.name; } };
   $('#saleReference').oninput = e => { saleDraft.reference = e.target.value; };
   $('#saleNote').oninput = e => { saleDraft.note = e.target.value; };
@@ -1630,7 +1680,7 @@ function renderPosResults(){
         ${productThumb(p, 34)}
         <div style="min-width:0;">
           <div class="name">${esc(p.name)}</div>
-          <div class="meta">SKU ${esc(p.sku)} · ${esc(p.category)} · ${stockBadge(p)}</div>
+          <div class="meta">SKU ${esc(p.sku)}${p.barcode?' · Cód. barras: '+esc(p.barcode):''} · ${esc(p.category)} · ${stockBadge(p)}</div>
         </div>
       </div>
       <div style="display:flex; align-items:center;"><div class="price">${fmt(p.price)}</div><span class="add-arrow">›</span></div>
@@ -1641,16 +1691,17 @@ function renderPosResults(){
 
 function addToCart(sku){
   const p = PRODUCTS.find(x=>x.sku===sku);
-  if(!p) return;
-  if(p.stock<=0){ toast('Sin stock disponible de "'+p.name+'"', true); return; }
+  if(!p) return false;
+  if(p.stock<=0){ toast('Sin stock disponible de "'+p.name+'"', true); return false; }
   const existing = cart.find(c=>c.sku===sku);
   if(existing){
-    if(existing.qty>=p.stock){ toast('No hay más stock disponible', true); return; }
+    if(existing.qty>=p.stock){ toast('No hay más stock disponible', true); return false; }
     existing.qty++;
   } else {
     cart.push({sku:p.sku, name:p.name, price:p.price, cost:p.cost, stock:p.stock, image:p.image||'', qty:1});
   }
   renderCart();
+  return true;
 }
 
 /* ---------- 2. Pagos mixtos ---------- */
