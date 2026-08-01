@@ -457,7 +457,8 @@ let stopCloudSync = null;
 let syncQueue = [];
 let syncState = { online:navigator.onLine, syncing:false, cloudAlive:false };
 
-const pf = { search:'', category:'all', status:'all', sortKey:'name', sortDir:'asc', page:1, pageSize:50 };
+// El orden inicial sigue la columna Código de la planilla maestra DISTRI INHALA.
+const pf = { search:'', category:'all', status:'all', sortKey:'sku', sortDir:'asc', page:1, pageSize:50 };
 const hf = { from:'', to:'', product:'', method:'all', period:'day' };
 let clientSearch = '';
 let posSearch = '';
