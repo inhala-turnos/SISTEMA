@@ -7,8 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<!-- Escaneo de códigos: fallback para navegadores sin BarcodeDetector nativo. -->
-<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
 <style>
   :root{
     --green-950:#0b1f16;
@@ -77,13 +75,6 @@
   }
   .topbar h1{font-size:19px; margin:0; font-weight:700; letter-spacing:-.2px;}
   .topbar .sub{color:var(--ink-soft); font-size:13px; margin-top:2px;}
-  .sync-status{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;font-weight:700;color:var(--green-700)}
-  .sync-status::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--green-500);box-shadow:0 0 0 3px var(--green-100)}
-  .sync-status.syncing{color:var(--amber)} .sync-status.syncing::before{background:var(--amber)}
-  .sync-status.offline{color:var(--red)} .sync-status.offline::before{background:var(--red);box-shadow:0 0 0 3px var(--red-bg)}
-  .scan-video{width:100%;max-height:360px;display:block;background:var(--green-950);border-radius:10px;object-fit:cover}
-  .scan-feedback{margin-top:10px;padding:9px 11px;border-radius:8px;background:var(--green-50);color:var(--ink-soft);font-size:12px}
-  .payment-box{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.payment-row{display:grid;grid-template-columns:1fr 150px 30px;gap:8px;align-items:center;margin-top:7px}.payment-total{font-size:12px;margin-top:9px;color:var(--ink-soft)}
   .content{padding:26px 30px 60px; flex:1;}
   .view{display:none;}
   .view.active{display:block;}
@@ -317,7 +308,6 @@
       <div>
         <h1 id="viewTitle">Dashboard</h1>
         <div class="sub" id="viewSub">Resumen general del negocio</div>
-        <div class="sync-status" id="syncStatus">Preparando sincronización…</div>
       </div>
       <div id="topbarActions"></div>
     </div>
@@ -418,6 +408,7 @@ const ICONS = {
   layers: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18 8.53 4.4a1 1 0 0 1 0 1.78l-8.53 4.4a2 2 0 0 1-1.66 0L2.64 8.36a1 1 0 0 1 0-1.78l8.53-4.4a2 2 0 0 1 1.66 0Z"/><path d="m22 12.5-8.53 4.4a2 2 0 0 1-1.66 0L2 12.5"/><path d="m22 17.5-8.53 4.4a2 2 0 0 1-1.66 0L2 17.5"/></svg>',
   upload: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3"/><path d="m7 8 5-5 5 5"/><path d="M20 16v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4"/></svg>',
   users: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  barcode: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14"/><path d="M7 5v14"/><path d="M11 5v14"/><path d="M14 5v14"/><path d="M18 5v14"/><path d="M21 5v14"/></svg>',
 };
 
 /* ---------- State ---------- */
@@ -430,17 +421,13 @@ let APP_SETTINGS = {...DEFAULT_APP_SETTINGS};
 let VIEW = 'dashboard';
 let cart = [];         // {sku,name,price,cost,stock,qty}
 let saleDraft = { clientId:'', reference:'', note:'' };
-let paymentDraft = [{method:'efectivo', amount:0}];
 let manualSkuSeq = 1;
 let selectedSkus = new Set();
 let CLOUD = null;
 let stopCloudSync = null;
-let syncQueue = [];
-let syncState = { online:navigator.onLine, syncing:false, cloudAlive:false };
-let activeScannerStop = null;
 
 const pf = { search:'', category:'all', status:'all', sortKey:'name', sortDir:'asc', page:1, pageSize:50 };
-const hf = { from:'', to:'', product:'', method:'all', period:'day' };
+const hf = { from:'', to:'', product:'', period:'day' };
 let clientSearch = '';
 let posSearch = '';
 let posCategory = 'all';
@@ -501,6 +488,12 @@ function productThumb(p, size){
   return `<img src="${src}" alt="" class="thumb-img" style="width:${size}px;height:${size}px;" onerror="this.onerror=null;this.src='${IMG_FALLBACK}';">`;
 }
 
+// Chip visual para confirmar el código de barras escaneado/cargado, en tipografía monoespaciada.
+function barcodeChipHtml(code){
+  if(!code) return '';
+  return `<span class="cat-chip sm" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.03em; background:var(--green-50); color:var(--green-700); border-color:var(--green-500);">${ICONS.barcode} ${esc(code)}</span>`;
+}
+
 // Deterministic color per category name, so the same category always gets the same
 // distinct color everywhere in the app (full inventory, filters, dashboard), with no
 // extra config needed even for categories the user adds later.
@@ -532,62 +525,6 @@ async function storageSet(key, value){
   try{ await window.storage.set(key, JSON.stringify(value), false); return true; }
   catch(e){ console.error('storage error', e); return false; }
 }
-
-/* ---------- 3 y 4. Estado de sync y cola offline ---------- */
-function updateSyncIndicator(){
-  const el = document.getElementById('syncStatus'); if(!el) return;
-  const pending = syncQueue.length;
-  if(!navigator.onLine){ el.className='sync-status offline'; el.textContent=pending ? `${pending} cambio${pending===1?'':'s'} pendiente${pending===1?'':'s'} · sin conexión` : 'Sin conexión · cambios locales'; return; }
-  if(syncState.syncing){ el.className='sync-status syncing'; el.textContent=pending ? `Sincronizando · ${pending} pendiente${pending===1?'':'s'}` : 'Sincronizando…'; return; }
-  if(pending){ el.className='sync-status syncing'; el.textContent=`${pending} cambio${pending===1?'':'s'} pendiente${pending===1?'':'s'} de subir`; return; }
-  el.className='sync-status'; el.textContent=syncState.cloudAlive ? 'Sincronizado' : 'Esperando conexión con la nube';
-}
-async function loadSyncQueue(){ syncQueue = await storageGet('inhala_sync_queue') || []; updateSyncIndicator(); }
-async function saveSyncQueue(){
-  const ok = await storageSet('inhala_sync_queue', syncQueue);
-  if(!ok) toast('No se pudo guardar la cola local de sincronización. No cierres la aplicación.', true);
-  updateSyncIndicator(); return ok;
-}
-async function enqueueSync(type, payload){
-  // Cada tipo es un snapshot: se conserva solo la versión más nueva y se evita subir datos viejos.
-  syncQueue = syncQueue.filter(x=>x.type!==type);
-  syncQueue.push({type, payload:JSON.parse(JSON.stringify(payload)), timestamp:Date.now()});
-  await saveSyncQueue();
-}
-async function cloudSave(type, payload){
-  if(!CLOUD || !navigator.onLine){ await enqueueSync(type,payload); return false; }
-  try{
-    syncState.syncing=true; updateSyncIndicator();
-    if(type==='products') await CLOUD.saveInventory(payload.products, payload.seq);
-    if(type==='sales') await CLOUD.saveSales(payload);
-    if(type==='clients') await CLOUD.saveClients(payload);
-    if(type==='settings') await CLOUD.saveSettings(payload);
-    syncState.cloudAlive=true;
-    return true;
-  }catch(err){
-    console.error('cloud sync error', type, err);
-    await enqueueSync(type,payload);
-    return false;
-  }finally{ syncState.syncing=false; updateSyncIndicator(); }
-}
-async function processSyncQueue(){
-  if(!navigator.onLine || !CLOUD || !syncQueue.length || syncState.syncing) { updateSyncIndicator(); return; }
-  syncState.syncing=true; updateSyncIndicator();
-  try{
-    while(syncQueue.length && navigator.onLine){
-      const entry=syncQueue[0]; let ok=false;
-      try{
-        if(entry.type==='products') await CLOUD.saveInventory(entry.payload.products, entry.payload.seq);
-        if(entry.type==='sales') await CLOUD.saveSales(entry.payload);
-        if(entry.type==='clients') await CLOUD.saveClients(entry.payload);
-        if(entry.type==='settings') await CLOUD.saveSettings(entry.payload);
-        ok=true; syncState.cloudAlive=true;
-      }catch(err){ console.error('queue retry error',err); break; }
-      if(ok){ syncQueue.shift(); await saveSyncQueue(); }
-    }
-  }finally{ syncState.syncing=false; updateSyncIndicator(); }
-}
-function localWriteError(type){ const e=new Error('No se pudo guardar '+type+' localmente'); e.localFailure=true; return e; }
 
 function waitForCloud(){
   if(window.inhalaCloud) return Promise.resolve(window.inhalaCloud);
@@ -629,24 +566,23 @@ async function loadData(){
   CLIENTS = clients;
   manualSkuSeq = seq || 1;
   applyAppearance();
-  // Primer respaldo: si la nube no responde, los snapshots locales quedan en cola.
-  await Promise.all([cloudSave('products',{products:PRODUCTS,seq:manualSkuSeq}), cloudSave('sales',SALES), cloudSave('clients',CLIENTS), cloudSave('settings',APP_SETTINGS)]);
+  await Promise.all([CLOUD.saveInventory(PRODUCTS, manualSkuSeq), CLOUD.saveSales(SALES), CLOUD.saveClients(CLIENTS), CLOUD.saveSettings(APP_SETTINGS)]);
 }
 async function persistProducts(){
-  if(!await storageSet('inhala_products', PRODUCTS)){ toast('No se pudo guardar el inventario localmente. No cierres la aplicación.', true); throw localWriteError('el inventario'); }
-  return cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq});
+  await storageSet('inhala_products', PRODUCTS);
+  if(CLOUD) await CLOUD.saveInventory(PRODUCTS, manualSkuSeq);
 }
 async function persistSales(){
-  if(!await storageSet('inhala_sales', SALES)){ toast('No se pudo guardar la venta localmente. No cierres la aplicación.', true); throw localWriteError('las ventas'); }
-  return cloudSave('sales', SALES);
+  await storageSet('inhala_sales', SALES);
+  if(CLOUD) await CLOUD.saveSales(SALES);
 }
 async function persistClients(){
-  if(!await storageSet('inhala_clients', CLIENTS)){ toast('No se pudo guardar el cliente localmente. No cierres la aplicación.', true); throw localWriteError('los clientes'); }
-  return cloudSave('clients', CLIENTS);
+  await storageSet('inhala_clients', CLIENTS);
+  if(CLOUD) await CLOUD.saveClients(CLIENTS);
 }
 async function persistSeq(){
-  if(!await storageSet('inhala_seq', manualSkuSeq)){ toast('No se pudo guardar la secuencia localmente. No cierres la aplicación.', true); throw localWriteError('la secuencia de productos'); }
-  return cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq});
+  await storageSet('inhala_seq', manualSkuSeq);
+  if(CLOUD) await CLOUD.saveInventory(PRODUCTS, manualSkuSeq);
 }
 function inventoryDuplicateKey(product){
   const normalize = value => String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -674,35 +610,27 @@ async function removeExactInventoryDuplicates(){
 }
 async function persistSettings(){
   APP_SETTINGS = normalizeAppSettings(APP_SETTINGS);
-  if(!await storageSet('inhala_settings', APP_SETTINGS)){ toast('No se pudo guardar la configuración localmente. No cierres la aplicación.', true); throw localWriteError('la configuración'); }
+  await storageSet('inhala_settings', APP_SETTINGS);
   applyAppearance();
-  return cloudSave('settings', APP_SETTINGS);
+  if(CLOUD) await CLOUD.saveSettings(APP_SETTINGS);
 }
 function startCloudSync(){
   if(!CLOUD || stopCloudSync) return;
   stopCloudSync = CLOUD.subscribe(data => {
     if(!Array.isArray(data.products)) return;
-    syncState.cloudAlive=true;
-    if(!syncQueue.some(x=>x.type==='products')) { PRODUCTS = data.products; manualSkuSeq = data.seq || 1; }
-    updateSyncIndicator();
+    PRODUCTS = data.products; manualSkuSeq = data.seq || 1;
     if(document.getElementById('app').style.display !== 'none') setView(VIEW);
   }, data => {
     if(!Array.isArray(data.sales)) return;
-    syncState.cloudAlive=true;
-    if(!syncQueue.some(x=>x.type==='sales')) SALES = data.sales;
-    updateSyncIndicator();
+    SALES = data.sales;
     if(VIEW==='dashboard' || VIEW==='historial') setView(VIEW);
   }, data => {
     if(!Array.isArray(data.clients)) return;
-    syncState.cloudAlive=true;
-    if(!syncQueue.some(x=>x.type==='clients')) CLIENTS = data.clients;
-    updateSyncIndicator();
+    CLIENTS = data.clients;
     if(VIEW==='clientes' || VIEW==='venta') setView(VIEW);
   }, data => {
-    syncState.cloudAlive=true;
-    if(!syncQueue.some(x=>x.type==='settings')) APP_SETTINGS = normalizeAppSettings(data.settings);
+    APP_SETTINGS = normalizeAppSettings(data.settings);
     applyAppearance();
-    updateSyncIndicator();
     if(VIEW==='configuracion') renderConfiguracion();
   });
 }
@@ -774,9 +702,6 @@ function renderDashboard(){
 
   const lowList = PRODUCTS.filter(p=>p.stock<=p.minStock).sort((a,b)=>a.stock-b.stock).slice(0,8);
   const recentSales = SALES.slice().sort((a,b)=> b.date.localeCompare(a.date)).slice(0,7);
-  // 2. Conciliación por forma de pago para el período visible del dashboard (hoy).
-  const paymentsToday = {efectivo:0, tarjeta:0, transferencia:0};
-  salesToday.forEach(s => (s.payments&&s.payments.length?s.payments:[{method:'efectivo',amount:s.total}]).forEach(p=>{ paymentsToday[p.method]=(paymentsToday[p.method]||0)+(Number(p.amount)||0); }));
 
   el.innerHTML = `
     <div class="grid kpis">
@@ -828,11 +753,6 @@ function renderDashboard(){
     </div>
 
     <div class="card" style="padding:18px 20px; margin-top:16px;">
-      <h2 class="section-title">Cobros de hoy por método de pago</h2>
-      <div class="grid" style="grid-template-columns:repeat(3,1fr);">${['efectivo','tarjeta','transferencia'].map(m=>`<div style="padding:12px;border:1px solid var(--line);border-radius:9px;"><div class="muted" style="font-size:12px;">${paymentMethodLabel(m)}</div><div class="strong" style="font-size:18px;margin-top:4px;">${fmt(paymentsToday[m]||0)}</div></div>`).join('')}</div>
-    </div>
-
-    <div class="card" style="padding:18px 20px; margin-top:16px;">
       <h2 class="section-title">Últimas ventas</h2>
       ${recentSales.length ? `<table>
         <thead><tr><th>Fecha</th><th>Productos</th><th style="text-align:right;">Total</th><th style="text-align:right;">Ganancia</th></tr></thead>
@@ -867,7 +787,7 @@ function filteredProducts(){
   let list = PRODUCTS;
   if(pf.search.trim()){
     const q = pf.search.trim().toLowerCase();
-    list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.provider||'').toLowerCase().includes(q));
+    list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.provider||'').toLowerCase().includes(q) || (p.barcode||'').toLowerCase().includes(q));
   }
   if(pf.category!=='all') list = list.filter(p=>p.category===pf.category);
   if(pf.status==='low') list = list.filter(p=>p.stock>0 && p.stock<=p.minStock);
@@ -964,7 +884,7 @@ function renderProductos(){
     return `<tr data-sku="${esc(p.sku)}">
       <td><input type="checkbox" class="row-select" data-sel="${esc(p.sku)}" ${selectedSkus.has(p.sku)?'checked':''}></td>
       <td>${productThumb(p, 48)}</td>
-      <td class="muted num">${esc(p.sku)}</td>
+      <td class="muted num">${esc(p.sku)}${p.barcode ? `<div class="muted" style="font-size:10px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">${esc(p.barcode)}</div>` : ''}</td>
       <td><div class="strong editable-cell" data-field="name" style="font-size:13px;">${esc(p.name)}</div><div class="muted editable-cell" data-field="provider" style="font-size:11px;">${esc(p.provider||'Sin proveedor')}</div></td>
       <td class="editable-cell" data-field="category">${categoryChip(p.category)}</td>
       <td class="num editable-cell" data-field="cost">${p.cost>0?fmt(p.cost):'<span class="muted">—</span>'}</td>
@@ -1068,9 +988,25 @@ function confirmDeleteProduct(sku){
   };
 }
 
-function openProductModal(sku){
+function collectProductFormValues(base){
+  // Junta los valores actuales del formulario (incluso los que el usuario tipeó pero no guardó)
+  // para poder reabrir el modal sin perder datos, por ejemplo después de escanear un código de barras.
+  return {
+    ...base,
+    name: $('#fName').value,
+    category: $('#fCategory').value,
+    provider: $('#fProvider').value,
+    image: $('#fImage').value,
+    barcode: $('#fBarcode').value,
+    cost: $('#fCost').value,
+    price: $('#fPrice').value,
+    stock: $('#fStock').value,
+    minStock: $('#fMin').value,
+  };
+}
+function openProductModal(sku, draftValues){
   const editing = !!sku;
-  const p = editing ? PRODUCTS.find(x=>x.sku===sku) : {sku:'', name:'', category:'', provider:'', cost:0, price:0, stock:0, minStock:5};
+  const p = draftValues || (editing ? PRODUCTS.find(x=>x.sku===sku) : {sku:'', name:'', category:'', provider:'', cost:0, price:0, stock:0, minStock:5});
   const cats = getCategories();
   showModal(`
     <div class="modal-head"><h3>${editing?'Editar producto':'Nuevo producto'}</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
@@ -1087,10 +1023,6 @@ function openProductModal(sku){
         <label class="field-label">Nombre del producto</label>
         <input id="fName" style="width:100%;" value="${esc(p.name)}" placeholder="Ej: Barrita de cereal 40g">
       </div>
-      <div>
-        <label class="field-label">Código de barras (opcional)</label>
-        <div style="display:flex; gap:8px;"><input id="fBarcode" style="width:100%;" value="${esc(p.barcode||'')}" placeholder="EAN, UPC u otro código"><button class="btn secondary" type="button" id="scanProductBarcode">Escanear</button></div>
-      </div>
       <div class="field-row">
         <div>
           <label class="field-label">Categoría</label>
@@ -1101,6 +1033,14 @@ function openProductModal(sku){
           <label class="field-label">Proveedor</label>
           <input id="fProvider" style="width:100%;" value="${esc(p.provider||'')}" placeholder="Opcional">
         </div>
+      </div>
+      <div>
+        <label class="field-label">Código de barras</label>
+        <div style="display:flex; gap:8px;">
+          <input id="fBarcode" style="width:100%;" value="${esc(p.barcode||'')}" placeholder="Escaneá o ingresá el código manualmente">
+          <button type="button" class="btn secondary" id="btnScanBarcode" style="white-space:nowrap;">${ICONS.barcode} Escanear</button>
+        </div>
+        <div id="barcodeChip" style="margin-top:6px;">${p.barcode ? barcodeChipHtml(p.barcode) : ''}</div>
       </div>
       <div class="field-row">
         <div>
@@ -1141,6 +1081,19 @@ function openProductModal(sku){
   $('#fImage').oninput = () => {
     $('#imgPreviewWrap').innerHTML = productThumb({image: $('#fImage').value.trim()}, 64);
   };
+  $('#fBarcode').oninput = () => {
+    $('#barcodeChip').innerHTML = barcodeChipHtml($('#fBarcode').value.trim());
+  };
+  $('#btnScanBarcode').onclick = () => {
+    const draft = collectProductFormValues(p);
+    openBarcodeScanner(code => {
+      draft.barcode = code;
+      const dupe = PRODUCTS.find(x => x.barcode && x.barcode===code && x.sku!==(editing?sku:''));
+      toast(dupe ? ('Código escaneado. Atención: ya lo usa "'+dupe.name+'"') : ('Código escaneado: '+code), !!dupe);
+      closeModal();
+      openProductModal(editing ? sku : null, draft); // reabre el modal de producto sin perder lo ya tipeado
+    }, { title: 'Escanear código de producto', hint: 'Apuntá la cámara al código de barras del producto para cargarlo.' });
+  };
 
   $('#saveProduct').onclick = async () => {
     const name = $('#fName').value.trim();
@@ -1154,7 +1107,10 @@ function openProductModal(sku){
     const stock = Math.max(0, Math.round(parseFloat($('#fStock').value)||0));
     const minStock = Math.max(0, Math.round(parseFloat($('#fMin').value)||0));
     if(editing){
-      Object.assign(p, {name, category, provider, image, barcode, cost, price, stock, minStock});
+      // Usamos la referencia real del producto en PRODUCTS, ya que `p` puede ser un borrador
+      // desconectado del array si el modal se reabrió después de escanear un código de barras.
+      const realProduct = PRODUCTS.find(x=>x.sku===sku);
+      Object.assign(realProduct, {name, category, provider, image, barcode, cost, price, stock, minStock});
     } else {
       const newSku = 'M-' + String(manualSkuSeq).padStart(4,'0');
       manualSkuSeq++;
@@ -1167,7 +1123,6 @@ function openProductModal(sku){
     renderProductos();
     if(VIEW==='dashboard') renderDashboard();
   };
-  $('#scanProductBarcode').onclick = () => openBarcodeScanner(code => { $('#fBarcode').value=code; toast('Código leído: '+code); });
 }
 
 /* ---------- Ajuste de precios por lote (categoría / selección / filtro / todo) ---------- */
@@ -1416,6 +1371,132 @@ function loadOcr(){
   if(window.Tesseract) return Promise.resolve();
   return new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'; s.onload=resolve; s.onerror=()=>reject(new Error('No se pudo cargar el lector de imágenes.')); document.head.appendChild(s); });
 }
+
+/* ================= ESCÁNER DE CÓDIGO DE BARRAS ================= */
+// Carga ZXing como fallback cuando el navegador no soporta la Barcode Detection API nativa.
+function loadZXing(){
+  if(window.ZXingBrowser) return Promise.resolve();
+  return new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js'; s.onload=resolve; s.onerror=()=>reject(new Error('No se pudo cargar el lector de códigos de barra.')); document.head.appendChild(s); });
+}
+
+// Abre un modal con la cámara y detecta códigos de barra en vivo.
+// onResult(code) se llama con cada código detectado; el modal permanece abierto
+// para poder escanear varios productos seguidos (útil en el POS).
+// Devuelve una función stopScanner() por si se necesita cerrar la cámara de forma manual.
+function openBarcodeScanner(onResult, opts){
+  const options = opts || {};
+  const title = options.title || 'Escanear código de barras';
+  const hint = options.hint || 'Apuntá la cámara al código de barras del producto.';
+  let stream = null, stopped = false, zxingControls = null, detectLoop = null;
+  let lastCode = null, lastCodeAt = 0;
+  const reportCode = raw => {
+    const code = String(raw||'').trim();
+    if(!code) return;
+    const now = Date.now();
+    if(code===lastCode && (now-lastCodeAt)<2000) return; // evita re-disparar el mismo código en frames seguidos
+    lastCode = code; lastCodeAt = now;
+    onResult(code);
+  };
+
+  showModal(`
+    <div class="modal-head"><h3>${ICONS.barcode} ${esc(title)}</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
+    <div class="modal-body">
+      <div class="hint" style="margin-bottom:10px;">${esc(hint)}</div>
+      <div id="scannerWrap" style="position:relative; width:100%; border-radius:12px; overflow:hidden; background:#000; min-height:220px; display:flex; align-items:center; justify-content:center;">
+        <video id="scannerVideo" autoplay playsinline muted style="width:100%; display:block;"></video>
+        <div id="scannerStatus" class="muted" style="position:absolute; color:#fff; font-size:12px; padding:6px 10px; background:rgba(0,0,0,.45); border-radius:8px; bottom:10px; left:10px; right:10px;">Iniciando cámara…</div>
+      </div>
+      <div class="field-row" style="margin-top:12px;">
+        <div>
+          <label class="field-label">O ingresalo manualmente</label>
+          <input id="scannerManualInput" style="width:100%;" placeholder="Escribí el código y presioná Enter">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn secondary" data-close>Cerrar</button>
+    </div>
+  `);
+
+  const statusEl = () => document.getElementById('scannerStatus');
+  const setStatus = msg => { const s = statusEl(); if(s) s.textContent = msg; };
+
+  function stopScanner(){
+    if(stopped) return;
+    stopped = true;
+    if(detectLoop) cancelAnimationFrame(detectLoop);
+    if(zxingControls){ try{ zxingControls.stop(); }catch(e){} }
+    if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+  }
+
+  const stopAndClose = () => { stopScanner(); closeModal(); };
+  $all('[data-close]', $('#modalBox')).forEach(b => b.onclick = stopAndClose);
+  $('#overlay').onclick = e => { if(e.target.id==='overlay') stopAndClose(); };
+
+  const manualInput = document.getElementById('scannerManualInput');
+  manualInput.onkeydown = e => {
+    if(e.key==='Enter'){
+      const v = manualInput.value.trim();
+      if(v){ reportCode(v); manualInput.value=''; }
+    }
+  };
+
+  (async () => {
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    }catch(err){
+      setStatus('No se pudo acceder a la cámara. Ingresá el código manualmente.');
+      toast('No se pudo acceder a la cámara del dispositivo', true);
+      return;
+    }
+    if(stopped){ stream.getTracks().forEach(t=>t.stop()); return; }
+    const video = document.getElementById('scannerVideo');
+    video.srcObject = stream;
+    await video.play().catch(()=>{});
+
+    if('BarcodeDetector' in window){
+      setStatus('Buscando código…');
+      let detector;
+      try{ detector = new BarcodeDetector(); }
+      catch(e){ detector = null; }
+      if(detector){
+        const tick = async () => {
+          if(stopped) return;
+          try{
+            const codes = await detector.detect(video);
+            if(codes && codes.length){
+              setStatus('Código detectado: ' + codes[0].rawValue);
+              reportCode(codes[0].rawValue);
+            }
+          }catch(e){ /* frame no legible, seguimos intentando */ }
+          if(!stopped) detectLoop = requestAnimationFrame(tick);
+        };
+        detectLoop = requestAnimationFrame(tick);
+        return;
+      }
+    }
+
+    // Fallback: ZXing
+    try{
+      setStatus('Cargando lector de códigos…');
+      await loadZXing();
+      if(stopped) return;
+      setStatus('Buscando código…');
+      const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+      zxingControls = await codeReader.decodeFromStream(stream, video, (result, err, controls) => {
+        zxingControls = controls;
+        if(result){
+          setStatus('Código detectado: ' + result.getText());
+          reportCode(result.getText());
+        }
+      });
+    }catch(err){
+      setStatus('Tu navegador no soporta lectura automática. Ingresá el código manualmente.');
+    }
+  })();
+
+  return stopScanner;
+}
 async function importPriceImage(file){
   showImportState('Leyendo la captura. Esto puede tardar unos segundos.', false);
   try{
@@ -1437,41 +1518,7 @@ function showModal(html){
   $all('[data-close]', $('#modalBox')).forEach(b=>b.onclick = closeModal);
   $('#overlay').onclick = e => { if(e.target.id==='overlay') closeModal(); };
 }
-function closeModal(){ if(activeScannerStop) activeScannerStop(); $('#overlay').classList.remove('active'); $('#modalBox').innerHTML=''; }
-
-/* ---------- 1. Lector de código de barras con cámara ---------- */
-function openBarcodeScanner(onDetected){
-  let stopped=false, stream=null, quaggaStarted=false;
-  const stop = () => {
-    if(stopped) return; stopped=true;
-    if(stream) stream.getTracks().forEach(t=>t.stop());
-    if(quaggaStarted && window.Quagga) try{ window.Quagga.stop(); }catch(e){}
-    activeScannerStop=null;
-  };
-  activeScannerStop=stop;
-  showModal(`<div class="modal-head"><h3>Escanear código de barras</h3><button class="icon-btn" data-close>${ICONS.close}</button></div><div class="modal-body"><video id="barcodeVideo" class="scan-video" autoplay muted playsinline></video><div id="scanQuaggaTarget" class="scan-video" style="display:none;"></div><div id="scanFeedback" class="scan-feedback">Solicitando acceso a la cámara…</div></div><div class="modal-foot"><button class="btn secondary" data-close>Cancelar</button></div>`);
-  const detected = code => {
-    if(stopped || !code) return; stopped=true;
-    const feedback=$('#scanFeedback'); if(feedback){ feedback.textContent='Código detectado: '+code; feedback.style.background='var(--green-100)'; feedback.style.color='var(--green-700)'; }
-    try{ const a=new (window.AudioContext||window.webkitAudioContext)(); const o=a.createOscillator(); o.connect(a.destination); o.frequency.value=880; o.start(); o.stop(a.currentTime+.08); }catch(e){}
-    setTimeout(()=>{ stop(); closeModal(); onDetected(String(code)); },350);
-  };
-  navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}).then(async s=>{
-    stream=s; const video=$('#barcodeVideo'); if(!video) return stop(); video.srcObject=s; await video.play();
-    const feedback=$('#scanFeedback'); if(feedback) feedback.textContent='Apuntá la cámara al código de barras.';
-    if('BarcodeDetector' in window){
-      let detector; try{ detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','codabar','itf']}); }catch(e){ detector=new BarcodeDetector(); }
-      const loop=async()=>{ if(stopped) return; try{ const codes=await detector.detect(video); if(codes[0]) return detected(codes[0].rawValue); }catch(e){} requestAnimationFrame(loop); }; loop();
-    }else if(window.Quagga){
-      // QuaggaJS opera sobre el video activo como fallback en navegadores sin API nativa.
-      stream.getTracks().forEach(t=>t.stop()); stream=null; video.style.display='none'; const target=$('#scanQuaggaTarget'); target.style.display='block';
-      window.Quagga.init({inputStream:{type:'LiveStream',target:target,constraints:{facingMode:'environment'}},decoder:{readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','code_39_reader','codabar_reader','i2of5_reader']}}, err=>{
-        if(err){ if(feedback) feedback.textContent='No se pudo iniciar el lector. Usá la búsqueda manual.'; return; }
-        quaggaStarted=true; window.Quagga.onDetected(r=>detected(r&&r.codeResult&&r.codeResult.code)); window.Quagga.start();
-      });
-    }else if(feedback){ feedback.textContent='Este navegador no admite lectura automática. Usá la búsqueda manual.'; }
-  }).catch(err=>{ const feedback=$('#scanFeedback'); if(feedback) feedback.textContent='No se pudo acceder a la cámara. Revisá el permiso del navegador y usá la búsqueda manual.'; }) : (()=>{ const feedback=$('#scanFeedback'); if(feedback) feedback.textContent='Este dispositivo no tiene una cámara disponible.'; })();
-}
+function closeModal(){ $('#overlay').classList.remove('active'); $('#modalBox').innerHTML=''; }
 
 /* ================= CLIENTES ================= */
 function clientSaleSummary(clientId){
@@ -1580,7 +1627,7 @@ function renderVenta(){
     <div class="grid pos-grid">
       <div class="card pos-panel">
         <div class="pos-panel-title"><h2>${ICONS.box} Catálogo de productos</h2><span class="pill-count">${fmtInt(PRODUCTS.length)} productos</span></div>
-        <div class="pos-search-row"><div class="search">${ICONS.search}<input id="posSearch" placeholder="Buscar producto por nombre, SKU, código o categoría…" value="${esc(posSearch)}"></div><button class="btn secondary" id="btnScanPos">Escanear</button><select class="pos-filter" id="posCategory"><option value="all">Todas las categorías</option>${getCategories().map(c=>`<option value="${esc(c)}" ${posCategory===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+        <div class="pos-search-row"><div class="search">${ICONS.search}<input id="posSearch" placeholder="Buscar producto por nombre, SKU o categoría…" value="${esc(posSearch)}"></div><select class="pos-filter" id="posCategory"><option value="all">Todas las categorías</option>${getCategories().map(c=>`<option value="${esc(c)}" ${posCategory===c?'selected':''}>${esc(c)}</option>`).join('')}</select><button class="btn secondary" id="btnScanToCart" style="white-space:nowrap;">${ICONS.barcode} Escanear</button></div>
         <div class="pos-results" id="posResults"></div>
       </div>
       <div class="card pos-panel" style="position:sticky; top:96px;">
@@ -1595,7 +1642,6 @@ function renderVenta(){
           </div>
           <div class="sale-receipt-lines"><div class="cart-columns"><span>Producto</span><span>Precio unitario</span><span>Cantidad</span><span style="text-align:right;">Subtotal</span><span></span></div><div id="cartItems"></div></div>
           <div class="sale-receipt-summary"><div id="cartTotals"></div></div>
-          <div class="payment-box"><label class="field-label">Forma de pago</label><div id="paymentRows"></div><button class="btn secondary sm" type="button" id="addPayment">${ICONS.plus} Agregar método</button><div class="payment-total" id="paymentTotal"></div></div>
         </div>
         <button class="btn sale-action" id="btnConfirmSale">${ICONS.check} Confirmar venta</button>
         <div class="sale-security">${ICONS.check} El stock se descuenta automáticamente al confirmar la venta.</div>
@@ -1604,7 +1650,11 @@ function renderVenta(){
   `;
   $('#posSearch').oninput = e => { posSearch = e.target.value; renderPosResults(); };
   $('#posCategory').onchange = e => { posCategory=e.target.value; renderPosResults(); };
-  $('#btnScanPos').onclick = () => openBarcodeScanner(code => { const p=PRODUCTS.find(x=>String(x.barcode||'')===code); if(p) addToCart(p.sku); else toast('No se encontró ningún producto con el código '+code, true); });
+  $('#btnScanToCart').onclick = () => {
+    openBarcodeScanner(code => {
+      addToCartByBarcode(code);
+    }, { title: 'Escanear para agregar al carrito', hint: 'Escaneá varios productos seguidos; se van agregando al carrito automáticamente.' });
+  };
   $('#saleClient').onchange = e => { saleDraft.clientId = e.target.value; const c=CLIENTS.find(x=>x.id===e.target.value); if(c && !saleDraft.reference) { saleDraft.reference=c.name; $('#saleReference').value=c.name; } };
   $('#saleReference').oninput = e => { saleDraft.reference = e.target.value; };
   $('#saleNote').oninput = e => { saleDraft.note = e.target.value; };
@@ -1612,7 +1662,6 @@ function renderVenta(){
   renderPosResults();
   renderCart();
   $('#btnConfirmSale').onclick = confirmSale;
-  $('#addPayment').onclick = () => { paymentDraft.push({method:'efectivo',amount:0}); renderPaymentRows(); };
   $('#btnRecentSales').onclick = () => setView('historial');
 }
 
@@ -1621,7 +1670,7 @@ function renderPosResults(){
   if(!box) return;
   let list = PRODUCTS;
   const q = posSearch.trim().toLowerCase();
-  if(q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || String(p.barcode||'').toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+  if(q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
   if(posCategory!=='all') list = list.filter(p=>p.category===posCategory);
   list = list.slice(0, 60);
   box.innerHTML = list.length ? list.map(p => `
@@ -1639,6 +1688,12 @@ function renderPosResults(){
   $all('[data-add]', box).forEach(r => r.onclick = () => addToCart(r.dataset.add));
 }
 
+// Busca un producto por código de barras y lo agrega al carrito (usado por el escáner del POS).
+function addToCartByBarcode(code){
+  const p = PRODUCTS.find(x => x.barcode && x.barcode===code);
+  if(!p){ toast('No se encontró ningún producto con ese código de barras', true); return; }
+  addToCart(p.sku);
+}
 function addToCart(sku){
   const p = PRODUCTS.find(x=>x.sku===sku);
   if(!p) return;
@@ -1651,21 +1706,6 @@ function addToCart(sku){
     cart.push({sku:p.sku, name:p.name, price:p.price, cost:p.cost, stock:p.stock, image:p.image||'', qty:1});
   }
   renderCart();
-}
-
-/* ---------- 2. Pagos mixtos ---------- */
-function cartTotal(){ return cart.reduce((a,c)=>a+(Number(c.price)||0)*(Number(c.qty)||0),0); }
-function paymentMethodLabel(method){ return ({efectivo:'Efectivo',tarjeta:'Tarjeta',transferencia:'Transferencia'})[method] || method; }
-function renderPaymentRows(){
-  const box=$('#paymentRows'); if(!box) return;
-  const total=cartTotal();
-  if(paymentDraft.length===1 && !paymentDraft[0].amount) paymentDraft[0].amount=total;
-  box.innerHTML=paymentDraft.map((p,i)=>`<div class="payment-row"><select data-payment-method="${i}"><option value="efectivo" ${p.method==='efectivo'?'selected':''}>Efectivo</option><option value="tarjeta" ${p.method==='tarjeta'?'selected':''}>Tarjeta</option><option value="transferencia" ${p.method==='transferencia'?'selected':''}>Transferencia</option></select><input data-payment-amount="${i}" type="number" min="0" step="0.01" value="${p.amount||''}" placeholder="Importe"><button class="icon-btn" data-payment-remove="${i}" title="Quitar método" ${paymentDraft.length===1?'disabled':''}>${ICONS.close}</button></div>`).join('');
-  const paid=paymentDraft.reduce((a,p)=>a+(Number(p.amount)||0),0), diff=total-paid;
-  $('#paymentTotal').innerHTML=`Total: <b>${fmt(total)}</b> · Ingresado: <b>${fmt(paid)}</b>${Math.abs(diff)>.009 ? ` · <span style="color:${diff>0?'var(--amber)':'var(--red)'}">${diff>0?'Faltan ':'Excede '}${fmt(Math.abs(diff))}</span>` : ' · <span style="color:var(--green-700);font-weight:700;">Pago completo</span>'}`;
-  $all('[data-payment-method]').forEach(el=>el.onchange=()=>{ paymentDraft[+el.dataset.paymentMethod].method=el.value; });
-  $all('[data-payment-amount]').forEach(el=>el.oninput=()=>{ paymentDraft[+el.dataset.paymentAmount].amount=Math.max(0,parseFloat(el.value)||0); renderPaymentRows(); });
-  $all('[data-payment-remove]').forEach(el=>el.onclick=()=>{ paymentDraft.splice(+el.dataset.paymentRemove,1); renderPaymentRows(); });
 }
 
 function renderCart(){
@@ -1696,7 +1736,6 @@ function renderCart(){
     <div class="cart-total-row"><span class="muted">Subtotal</span><span class="strong">${fmt(total)}</span></div>
     <div class="cart-total-row grand"><span>Total</span><span>${fmt(total)}</span></div>
   ` : '';
-  renderPaymentRows();
 
   $all('[data-qty]', box).forEach(b => b.onclick = () => {
     const sku = b.closest('.cart-item').dataset.sku;
@@ -1735,32 +1774,15 @@ async function confirmSale(){
   }
   const items = cart.map(c => ({sku:c.sku, name:c.name, qty:c.qty, price:c.price, cost:c.cost, total:c.price*c.qty}));
   const total = items.reduce((a,i)=>a+i.total,0);
-  const payments = paymentDraft.map(p=>({method:p.method,amount:Math.round((Number(p.amount)||0)*100)/100})).filter(p=>p.amount>0);
-  const paid = payments.reduce((a,p)=>a+p.amount,0);
-  const difference = Math.round((total-paid)*100)/100;
-  if(Math.abs(difference)>0.009){ toast((difference>0?'Faltan ':'El pago excede ') + fmt(Math.abs(difference)) + ' para completar la venta.', true); return; }
   const totalCost = items.reduce((a,i)=>a+i.cost*i.qty,0);
   const selectedClient = CLIENTS.find(c=>c.id===saleDraft.clientId);
-  const sale = {id:'V-'+Date.now(), date:new Date().toISOString(), clientId:selectedClient?selectedClient.id:'', clientName:selectedClient?selectedClient.name:'', reference:saleDraft.reference.trim(), note:saleDraft.note.trim(), payments, items, total, totalCost, profit: total-totalCost};
-  // 3. Snapshot para rollback si falla el almacenamiento local; la nube offline usa la cola y no bloquea la venta.
-  const productStocks = cart.map(c=>({sku:c.sku,stock:PRODUCTS.find(p=>p.sku===c.sku).stock}));
+  const sale = {id:'V-'+Date.now(), date:new Date().toISOString(), clientId:selectedClient?selectedClient.id:'', clientName:selectedClient?selectedClient.name:'', reference:saleDraft.reference.trim(), note:saleDraft.note.trim(), items, total, totalCost, profit: total-totalCost};
   cart.forEach(c => { const p = PRODUCTS.find(x=>x.sku===c.sku); if(p) p.stock -= c.qty; });
   SALES.push(sale);
-  try{
-    await persistProducts();
-    await persistSales();
-  }catch(err){
-    productStocks.forEach(x=>{ const p=PRODUCTS.find(p=>p.sku===x.sku); if(p) p.stock=x.stock; });
-    SALES=SALES.filter(s=>s.id!==sale.id);
-    // Si la primera escritura local alcanzó a completarse, se recompone también el snapshot local.
-    await storageSet('inhala_products', PRODUCTS);
-    await storageSet('inhala_sales', SALES);
-    toast('La venta no se guardó localmente. Se revirtió el stock para evitar inconsistencias.', true);
-    renderVenta();
-    return;
-  }
+  await persistProducts();
+  await persistSales();
   cart = [];
-  saleDraft = {clientId:'', reference:'', note:''}; paymentDraft = [{method:'efectivo',amount:0}];
+  saleDraft = {clientId:'', reference:'', note:''};
   renderVenta();
   toast('Venta ' + sale.id.replace('V-','') + ' registrada por ' + fmt(sale.total));
 }
@@ -1784,7 +1806,6 @@ function filteredSales(){
     const q = hf.product.trim().toLowerCase();
     list = list.filter(s => s.items.some(i => i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q)));
   }
-  if(hf.method!=='all') list=list.filter(s=>(s.payments&&s.payments.length?s.payments:[{method:'efectivo',amount:s.total}]).some(p=>p.method===hf.method));
   return list.slice().sort((a,b)=> b.date.localeCompare(a.date));
 }
 
@@ -1810,7 +1831,6 @@ function renderHistorial(){
       <div><label class="field-label">Desde</label><input type="date" id="hFrom" value="${hf.from}"></div>
       <div><label class="field-label">Hasta</label><input type="date" id="hTo" value="${hf.to}"></div>
       <div style="flex:1; min-width:200px;"><label class="field-label">Producto</label><div class="search">${ICONS.search}<input id="hProduct" placeholder="Nombre o SKU…" value="${esc(hf.product)}"></div></div>
-      <div><label class="field-label">Pago</label><select id="hMethod"><option value="all">Todos</option><option value="efectivo" ${hf.method==='efectivo'?'selected':''}>Efectivo</option><option value="tarjeta" ${hf.method==='tarjeta'?'selected':''}>Tarjeta</option><option value="transferencia" ${hf.method==='transferencia'?'selected':''}>Transferencia</option></select></div>
       <div>
         <label class="field-label">Agrupar por</label>
         <div class="chip-row">
@@ -1844,12 +1864,11 @@ function renderHistorial(){
     <div class="card" style="padding:18px 20px;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;"><h2 class="section-title">Detalle de ventas</h2><span class="hint">Cada fila es una venta completa</span></div>
       ${list.length ? `<table>
-        <thead><tr><th>Venta</th><th>Fecha</th><th>Productos</th><th>Pago</th><th style="text-align:right;">Unidades</th><th style="text-align:right;">Total</th><th style="text-align:right;">Ganancia</th><th style="text-align:right;">Acciones</th></tr></thead>
+        <thead><tr><th>Venta</th><th>Fecha</th><th>Productos</th><th style="text-align:right;">Unidades</th><th style="text-align:right;">Total</th><th style="text-align:right;">Ganancia</th><th style="text-align:right;">Acciones</th></tr></thead>
         <tbody>${list.slice(0,300).map(s => `<tr>
           <td><div class="strong">#${esc(String(s.id||'').replace('V-',''))}</div>${s.clientName?`<div class="muted" style="font-size:11px;">${esc(s.clientName)}</div>`:(s.reference?`<div class="muted" style="font-size:11px;">${esc(s.reference)}</div>`:'')}</td>
           <td class="num">${fmtDateTime(s.date)}</td>
           <td><div class="strong" style="font-size:12px;">${s.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</div>${s.note?`<div class="muted" style="font-size:11px; margin-top:3px;">${esc(s.note)}</div>`:''}</td>
-          <td>${(s.payments&&s.payments.length?s.payments:[{method:'efectivo',amount:s.total}]).map(p=>`<span class="badge ok" style="margin:1px 3px 1px 0;">${paymentMethodLabel(p.method)} ${fmt(p.amount)}</span>`).join('')}</td>
           <td class="num" style="text-align:right;">${s.items.reduce((a,i)=>a+i.qty,0)}</td>
           <td class="num" style="text-align:right;">${fmt(s.total)}</td>
           <td class="num" style="text-align:right; color:var(--green-700); font-weight:700;">${fmt(s.profit)}</td>
@@ -1862,7 +1881,6 @@ function renderHistorial(){
   $('#hFrom').onchange = e => { hf.from = e.target.value; renderHistorial(); };
   $('#hTo').onchange = e => { hf.to = e.target.value; renderHistorial(); };
   $('#hProduct').oninput = e => { hf.product = e.target.value; withFocusPreserved(renderHistorial); };
-  $('#hMethod').onchange = e => { hf.method=e.target.value; renderHistorial(); };
   $all('[data-period]').forEach(b => b.onclick = () => { hf.period = b.dataset.period; renderHistorial(); });
   $all('[data-sale-edit]').forEach(b => b.onclick = () => openSaleEditor(b.dataset.saleEdit));
   $all('[data-sale-del]').forEach(b => b.onclick = () => confirmDeleteSale(b.dataset.saleDel));
@@ -1943,7 +1961,6 @@ document.getElementById('firebaseLogin').onsubmit = async e => {
 };
 async function init(){
   APP_SETTINGS = normalizeAppSettings(await storageGet('inhala_settings'));
-  await loadSyncQueue();
   applyAppearance();
   await loadData();
   await removeExactInventoryDuplicates();
@@ -1953,11 +1970,7 @@ async function init(){
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   startCloudSync();
-  updateSyncIndicator();
-  processSyncQueue();
 }
-window.addEventListener('online', ()=>{ syncState.online=true; updateSyncIndicator(); processSyncQueue(); });
-window.addEventListener('offline', ()=>{ syncState.online=false; updateSyncIndicator(); });
 init();
 
 })();
