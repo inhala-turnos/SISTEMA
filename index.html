@@ -1837,6 +1837,28 @@ function renderCart(){
     renderCart();
   });
   $all('[data-qtyinput]', box).forEach(inp => {
+    inp.oninput = () => {
+      const sku = inp.closest('.cart-item').dataset.sku;
+      const item = cart.find(c=>c.sku===sku);
+      const p = PRODUCTS.find(x=>x.sku===sku);
+      let v = Math.round(parseFloat(inp.value))||0;
+      if(v<=0) return; // esperar a que termine de escribir antes de quitar la fila
+      if(p && v>p.stock) v=p.stock;
+      item.qty = v;
+      // Actualiza subtotal, totales y pagos sin perder el foco del input mientras se escribe.
+      const row = inp.closest('.cart-item');
+      row.querySelector('.cart-subtotal').textContent = fmt(item.price*item.qty);
+      const total = cart.reduce((a,c)=>a+c.price*c.qty,0);
+      const totalUnits = cart.reduce((a,c)=>a+c.qty,0);
+      const pill = $('#cartPill');
+      if(pill) pill.textContent = `${cart.length} producto${cart.length===1?'':'s'} · ${totalUnits} ${totalUnits===1?'unidad':'unidades'}`;
+      totals.innerHTML = `
+        <div class="cart-total-row"><span class="muted">Unidades totales</span><span class="strong">${totalUnits}</span></div>
+        <div class="cart-total-row"><span class="muted">Subtotal</span><span class="strong">${fmt(total)}</span></div>
+        <div class="cart-total-row grand"><span>Total</span><span>${fmt(total)}</span></div>
+      `;
+      renderPaymentRows();
+    };
     inp.onchange = () => {
       const sku = inp.closest('.cart-item').dataset.sku;
       const item = cart.find(c=>c.sku===sku);
