@@ -1697,7 +1697,10 @@ function renderVenta(){
   el.innerHTML = `
     <div class="card pos-hero">
       <div class="pos-hero-title"><div class="pos-hero-icon">${ICONS.cart}</div><div><h2>Nueva venta</h2><p>Registrar una venta y descontar stock</p></div></div>
-      <button class="btn secondary" id="btnRecentSales">${ICONS.history} Ventas recientes</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn secondary" id="btnPrintLastTicket" ${SALES.length?'':'disabled'} title="${SALES.length?'Imprimir el ticket de la última venta registrada':'Todavía no hay ventas registradas'}">${ICONS.print} Imprimir ticket</button>
+        <button class="btn secondary" id="btnRecentSales">${ICONS.history} Ventas recientes</button>
+      </div>
     </div>
     <div class="grid pos-grid">
       <div class="card pos-panel">
@@ -1735,6 +1738,10 @@ function renderVenta(){
   $('#btnConfirmSale').onclick = confirmSale;
   $('#addPayment').onclick = () => { paymentDraft.push({method:'efectivo',amount:0}); renderPaymentRows(); };
   $('#btnRecentSales').onclick = () => setView('historial');
+  $('#btnPrintLastTicket').onclick = () => {
+    if(!SALES.length){ toast('Todavía no hay ventas registradas'); return; }
+    openTicketModal(SALES[SALES.length-1]);
+  };
 }
 
 function renderPosResults(){
