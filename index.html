@@ -716,6 +716,30 @@ function waitForCloud(){
   return new Promise(resolve => window.addEventListener('inhala-cloud-ready', () => resolve(window.inhalaCloud), {once:true}));
 }
 
+function backfillBrands(){
+  // Completa/actualiza la marca de cada producto ya guardado (nube o local)
+  // usando el listado de referencia embebido en la app, matcheando por SKU
+  // y, si no hay SKU coincidente, por nombre normalizado.
+  const seed = window.__INHALA_PRODUCTS__ || [];
+  if(!seed.length || !Array.isArray(PRODUCTS) || !PRODUCTS.length) return false;
+  const norm = s => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const bySku = new Map();
+  const byName = new Map();
+  seed.forEach(r=>{
+    bySku.set(String(r[0]), r[5]);
+    if(!byName.has(norm(r[1]))) byName.set(norm(r[1]), r[5]);
+  });
+  let changed = false;
+  PRODUCTS.forEach(p=>{
+    let seedBrand = bySku.get(String(p.sku));
+    if(seedBrand === undefined) seedBrand = byName.get(norm(p.name));
+    if(seedBrand && seedBrand !== p.brand){
+      p.brand = seedBrand;
+      changed = true;
+    }
+  });
+  return changed;
+}
 async function loadData(){
   CLOUD = await waitForCloud();
   await CLOUD.waitForUser();
@@ -729,7 +753,9 @@ async function loadData(){
     await storageSet('inhala_settings', APP_SETTINGS);
     applyAppearance();
     if(!remote.settingsExists) await CLOUD.saveSettings(APP_SETTINGS);
-    if(applyAutomaticWeightSales(PRODUCTS)) await persistProducts();
+    const weightMigrated = applyAutomaticWeightSales(PRODUCTS);
+    const brandsMigrated = backfillBrands();
+    if(weightMigrated || brandsMigrated) await persistProducts();
     return;
   }
 
@@ -752,8 +778,9 @@ async function loadData(){
   CLIENTS = clients;
   manualSkuSeq = seq || 1;
   const migratedWeightProducts = applyAutomaticWeightSales(PRODUCTS);
+  const migratedBrands = backfillBrands();
   applyAppearance();
-  if(migratedWeightProducts) await storageSet('inhala_products', PRODUCTS);
+  if(migratedWeightProducts || migratedBrands) await storageSet('inhala_products', PRODUCTS);
   // Primer respaldo: si la nube no responde, los snapshots locales quedan en cola.
   await Promise.all([cloudSave('products',{products:PRODUCTS,seq:manualSkuSeq}), cloudSave('sales',SALES), cloudSave('clients',CLIENTS), cloudSave('settings',APP_SETTINGS)]);
 }
