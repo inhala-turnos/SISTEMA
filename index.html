@@ -228,6 +228,11 @@
   .qty-ctrl{display:flex; align-items:center; gap:4px;}
   .qty-ctrl button{width:24px; height:24px; border-radius:6px; border:1px solid var(--line); background:var(--surface); cursor:pointer; font-weight:700;}
   .qty-ctrl input{width:38px; text-align:center; padding:4px;}
+  .weight-ctrl{display:flex; flex-direction:column; gap:2px;}
+  .weight-ctrl input{width:88px; text-align:center; padding:5px 4px; font-size:12.5px;}
+  .weight-ctrl .hint{margin:0; font-size:10px; line-height:1.2;}
+  .unit-toggle{display:flex; gap:14px; align-items:center; margin-top:4px;}
+  .unit-toggle label{display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500; cursor:pointer;}
   .cart-total-row{display:flex; justify-content:space-between; padding:8px 0; font-size:13.5px;}
   .cart-total-row.grand{font-size:20px; font-weight:900; border-top:1px solid var(--green-100); margin-top:6px; padding-top:12px; color:var(--green-900);}
   .sale-action{width:100%; justify-content:center; margin-top:14px; padding:13px; font-size:14px;}
@@ -484,6 +489,60 @@ const $ = (sel, root) => (root||document).querySelector(sel);
 const $all = (sel, root) => Array.from((root||document).querySelectorAll(sel));
 const fmt = n => '$' + (Math.round((n||0)*100)/100).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
 const fmtInt = n => (n||0).toLocaleString('es-AR');
+
+/* ---------- Productos vendidos por peso (kg) ---------- */
+// Interpreta texto de peso ingresado a mano y lo devuelve siempre en KILOS.
+// Reglas: "150" o "150g"/"150gr"/"150grs" -> 150 gramos (0.150 kg). "2,5kg" o "2.5 kg" -> 2.5 kg.
+// Acepta coma o punto como separador decimal. Devuelve null si no se puede interpretar.
+function parseWeightToKg(text){
+  if(text==null) return null;
+  const raw = String(text).trim().toLowerCase().replace(/\s+/g,'');
+  if(!raw) return null;
+  const m = raw.match(/^([0-9]+(?:[.,][0-9]+)?)(kg|kgs|g|gr|grs)?$/);
+  if(!m) return null;
+  const num = parseFloat(m[1].replace(',', '.'));
+  if(isNaN(num) || num<0) return null;
+  const unit = m[2] || 'g'; // sin unidad explícita se asume gramos
+  const kg = (unit==='kg' || unit==='kgs') ? num : num/1000;
+  return Math.round(kg*1000)/1000; // redondeo interno a 1 gramo de precisión
+}
+// Formatea un peso en kg como texto legible: "150 g" si es menor a 1kg, "2,5 kg" si no.
+function formatWeightKg(kg){
+  const n = Number(kg)||0;
+  if(n < 1) return Math.round(n*1000) + ' g';
+  const rounded = Math.round(n*1000)/1000;
+  return rounded.toLocaleString('es-AR', {maximumFractionDigits:3}) + ' kg';
+}
+// Texto de cantidad para carrito/ticket/historial, según si el ítem se vende por peso o por unidad.
+function formatItemQty(item){
+  if(item && item.unit==='kg') return formatWeightKg(item.qty);
+  const q = Number(item && item.qty)||0;
+  return fmtInt(q) + ' ' + (q===1?'unidad':'unidades');
+}
+// Precio unitario mostrado: aclara "/kg" para productos vendidos por peso.
+function formatUnitPrice(item){
+  return fmt(item.price) + (item && item.unit==='kg' ? '/kg' : '');
+}
+// Detecta productos cuyo nombre o descripción indica que se venden por kilo.
+// Ejemplos: "por kg", "1 kg", "10kg", "2,5 kilos".
+function productIndicatesWeightSale(product){
+  const text = [product && product.name, product && product.description, product && product.details]
+    .filter(Boolean).join(' ').toLowerCase();
+  return /\bpor\s+(?:peso\s*\(?\s*)?(?:kg|kgs|kilo(?:s)?)\b|\b\d+(?:[.,]\d+)?\s*(?:kg|kgs|kilo(?:s)?)\b/.test(text);
+}
+// Migración segura: solo activa "A granel" y nunca modifica el resto de los datos.
+function applyAutomaticWeightSales(products){
+  let updated = 0;
+  (products || []).forEach(product => {
+    if(!product.soldByWeight && productIndicatesWeightSale(product)){
+      product.soldByWeight = true;
+      updated++;
+    }
+  });
+  return updated;
+}
+// Redondeo del subtotal: al peso (moneda) más cercano, para evitar centavos raros.
+function roundMoney(n){ return Math.round(Number(n)||0); }
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function safeImageUrl(value, fallback){
   const v = String(value||'').trim();
@@ -670,6 +729,7 @@ async function loadData(){
     await storageSet('inhala_settings', APP_SETTINGS);
     applyAppearance();
     if(!remote.settingsExists) await CLOUD.saveSettings(APP_SETTINGS);
+    if(applyAutomaticWeightSales(PRODUCTS)) await persistProducts();
     return;
   }
 
@@ -691,7 +751,9 @@ async function loadData(){
   SALES = sales;
   CLIENTS = clients;
   manualSkuSeq = seq || 1;
+  const migratedWeightProducts = applyAutomaticWeightSales(PRODUCTS);
   applyAppearance();
+  if(migratedWeightProducts) await storageSet('inhala_products', PRODUCTS);
   // Primer respaldo: si la nube no responde, los snapshots locales quedan en cola.
   await Promise.all([cloudSave('products',{products:PRODUCTS,seq:manualSkuSeq}), cloudSave('sales',SALES), cloudSave('clients',CLIENTS), cloudSave('settings',APP_SETTINGS)]);
 }
@@ -928,9 +990,10 @@ function fmtDateTime(iso){
 }
 
 function stockBadge(p){
+  const label = p.soldByWeight ? formatWeightKg(p.stock) : (p.stock + ' u.');
   if(p.stock<=0) return `<span class="badge out dot">Agotado</span>`;
-  if(p.stock<=p.minStock) return `<span class="badge low dot">Bajo (${p.stock})</span>`;
-  return `<span class="badge ok dot">${p.stock} u.</span>`;
+  if(p.stock<=p.minStock) return `<span class="badge low dot">Bajo (${label})</span>`;
+  return `<span class="badge ok dot">${label}</span>`;
 }
 
 /* ================= PRODUCTOS ================= */
@@ -1052,12 +1115,12 @@ function renderProductos(){
       <td><input type="checkbox" class="row-select" data-sel="${esc(p.sku)}" ${selectedSkus.has(p.sku)?'checked':''}></td>
       <td>${productThumb(p, 48)}</td>
       <td class="muted num">${esc(p.sku)}</td>
-      <td><div class="strong editable-cell" data-field="name" style="font-size:13px;">${esc(p.name)}</div><div class="muted editable-cell" data-field="brand" style="font-size:11px;">${esc(p.brand||'Sin marca')}</div><div class="muted editable-cell" data-field="provider" style="font-size:11px;">${esc(p.provider||'Sin proveedor')}</div></td>
+      <td><div class="strong editable-cell" data-field="name" style="font-size:13px; display:flex; align-items:center; gap:6px;">${esc(p.name)}${p.soldByWeight?'<span class="badge dot" style="background:var(--green-100); color:var(--green-700);">A Granel</span>':''}</div><div class="muted editable-cell" data-field="brand" style="font-size:11px;">${esc(p.brand||'Sin marca')}</div><div class="muted editable-cell" data-field="provider" style="font-size:11px;">${esc(p.provider||'Sin proveedor')}</div></td>
       <td class="editable-cell" data-field="category">${categoryChip(p.category)}</td>
-      <td class="num editable-cell" data-field="cost">${p.cost>0?fmt(p.cost):'<span class="muted">—</span>'}</td>
-      <td class="num editable-cell strong" data-field="price">${fmt(p.price)}</td>
+      <td class="num editable-cell" data-field="cost">${p.cost>0?fmt(p.cost)+(p.soldByWeight?'/kg':''):'<span class="muted">—</span>'}</td>
+      <td class="num editable-cell strong" data-field="price">${fmt(p.price)}${p.soldByWeight?'/kg':''}</td>
       <td class="num">${margin!==null? margin.toFixed(1)+'%' : '<span class="muted">—</span>'}</td>
-      <td class="num editable-cell" data-field="stock">${p.stock}</td>
+      <td class="num editable-cell" data-field="stock">${p.soldByWeight?formatWeightKg(p.stock):p.stock}</td>
       <td>${stockBadge(p)}</td>
       <td style="text-align:right; white-space:nowrap;">
         <button class="icon-btn" data-edit="${esc(p.sku)}" title="Editar">${ICONS.edit}</button>
@@ -1107,11 +1170,12 @@ function startInlineEdit(td){
   if(!p) return;
   const current = p[field];
   const numeric = ['cost','price','stock','minStock'].includes(field);
+  const isWeightQty = (field==='stock' || field==='minStock') && p.soldByWeight;
   if(field==='category'){
     const cats = Array.from(new Set([...getCategories(), current])).filter(Boolean).sort();
     td.innerHTML = `<select class="cell-edit" style="min-width:145px;">${cats.map(c=>`<option value="${esc(c)}" ${c===current?'selected':''}>${esc(c)}</option>`).join('')}</select>`;
   } else {
-    td.innerHTML = `<input class="cell-edit" type="${numeric?'number':'text'}" ${numeric?'step="0.01" min="0"':''} value="${esc(current)}">`;
+    td.innerHTML = `<input class="cell-edit" type="${numeric?'number':'text'}" ${numeric?`step="${isWeightQty?'0.001':'0.01'}" min="0"`:''} value="${esc(current)}">`;
   }
   const input = td.querySelector('input, select');
   input.focus(); if(input.select) input.select();
@@ -1120,7 +1184,8 @@ function startInlineEdit(td){
     if(numeric){
       val = parseFloat(input.value);
       if(isNaN(val) || val<0) val = 0;
-      if(field==='stock' || field==='minStock') val = Math.round(val);
+      if((field==='stock' || field==='minStock') && !isWeightQty) val = Math.round(val);
+      if(isWeightQty) val = Math.round(val*1000)/1000;
     } else {
       val = input.value.trim();
       if(!val) val = field==='category' ? 'Otros' : (field==='provider' ? 'Sin proveedor' : (field==='brand' ? 'Sin marca' : p[field]));
@@ -1160,7 +1225,7 @@ function confirmDeleteProduct(sku){
 function openProductModal(sku){
   const editing = !!sku;
   const savedProduct = editing ? PRODUCTS.find(x=>x.sku===sku) : null;
-  const p = savedProduct || {sku:'', name:'', category:'', provider:'', brand:'', image:'', cost:0, price:0, stock:0, minStock:5};
+  const p = savedProduct || {sku:'', name:'', category:'', provider:'', brand:'', image:'', cost:0, price:0, stock:0, minStock:5, soldByWeight:false};
   const cats = getCategories();
   const brandsList = getBrands().filter(b=>b!=='Sin marca');
   showModal(`
@@ -1194,24 +1259,32 @@ function openProductModal(sku){
         <label class="field-label">Proveedor</label>
         <input id="fProvider" style="width:100%;" value="${esc(p.provider||'')}" placeholder="Opcional">
       </div>
+      <div>
+        <label class="field-label">¿Cómo se vende este producto?</label>
+        <div class="unit-toggle">
+          <label><input type="radio" name="fUnit" value="unidad" ${!p.soldByWeight?'checked':''}> Por unidad</label>
+          <label><input type="radio" name="fUnit" value="kg" ${p.soldByWeight?'checked':''}> A granel, por peso (kg)</label>
+        </div>
+        <div class="hint">Si es "por peso", el precio de venta se interpreta como precio por kilo y el stock se carga en kilos (acepta decimales).</div>
+      </div>
       <div class="field-row">
         <div>
-          <label class="field-label">Precio de costo</label>
+          <label class="field-label">Precio de costo <span id="fCostUnitLabel"></span></label>
           <input id="fCost" type="number" step="0.01" min="0" style="width:100%;" value="${p.cost}">
         </div>
         <div>
-          <label class="field-label">Precio de venta</label>
+          <label class="field-label">Precio de venta <span id="fPriceUnitLabel"></span></label>
           <input id="fPrice" type="number" step="0.01" min="0" style="width:100%;" value="${p.price}">
         </div>
       </div>
       <div class="field-row">
         <div>
-          <label class="field-label">Stock disponible</label>
-          <input id="fStock" type="number" step="1" min="0" style="width:100%;" value="${p.stock}">
+          <label class="field-label" id="fStockLabel">Stock disponible</label>
+          <input id="fStock" type="number" step="${p.soldByWeight?'0.001':'1'}" style="width:100%;" value="${p.stock}">
         </div>
         <div>
-          <label class="field-label">Alerta de stock bajo</label>
-          <input id="fMin" type="number" step="1" min="0" style="width:100%;" value="${p.minStock}">
+          <label class="field-label" id="fMinLabel">Alerta de stock bajo</label>
+          <input id="fMin" type="number" step="${p.soldByWeight?'0.001':'1'}" min="0" style="width:100%;" value="${p.minStock}">
         </div>
       </div>
       <div class="hint" id="marginPreview"></div>
@@ -1233,6 +1306,17 @@ function openProductModal(sku){
   $('#fImage').oninput = () => {
     $('#imgPreviewWrap').innerHTML = productThumb({image: $('#fImage').value.trim()}, 64);
   };
+  const updateUnitUI = () => {
+    const byWeight = $('input[name="fUnit"]:checked').value === 'kg';
+    $('#fCostUnitLabel').textContent = byWeight ? '(por kg)' : '';
+    $('#fPriceUnitLabel').textContent = byWeight ? '(por kg)' : '';
+    $('#fStockLabel').textContent = byWeight ? 'Stock disponible (kg)' : 'Stock disponible';
+    $('#fMinLabel').textContent = byWeight ? 'Alerta de stock bajo (kg)' : 'Alerta de stock bajo';
+    $('#fStock').step = byWeight ? '0.001' : '1';
+    $('#fMin').step = byWeight ? '0.001' : '1';
+  };
+  $all('input[name="fUnit"]').forEach(r => r.onchange = updateUnitUI);
+  updateUnitUI();
 
   $('#saveProduct').onclick = async () => {
     const name = $('#fName').value.trim();
@@ -1241,17 +1325,19 @@ function openProductModal(sku){
     const brand = $('#fBrand').value.trim();
     const provider = $('#fProvider').value.trim();
     const image = $('#fImage').value.trim();
+    // Si el nombre o la descripción indica kilos, se conserva automáticamente como venta a granel.
+    const soldByWeight = $('input[name="fUnit"]:checked').value === 'kg' || productIndicatesWeightSale({name});
     const cost = Math.max(0, parseFloat($('#fCost').value)||0);
     const price = Math.max(0, parseFloat($('#fPrice').value)||0);
-    const stock = Math.max(0, Math.round(parseFloat($('#fStock').value)||0));
-    const minStock = Math.max(0, Math.round(parseFloat($('#fMin').value)||0));
+    const stock = soldByWeight ? Math.max(0, parseFloat($('#fStock').value)||0) : Math.max(0, Math.round(parseFloat($('#fStock').value)||0));
+    const minStock = soldByWeight ? Math.max(0, parseFloat($('#fMin').value)||0) : Math.max(0, Math.round(parseFloat($('#fMin').value)||0));
     if(editing){
-      Object.assign(savedProduct, {name, category, brand, provider, image, cost, price, stock, minStock});
+      Object.assign(savedProduct, {name, category, brand, provider, image, cost, price, stock, minStock, soldByWeight});
     } else {
       const newSku = 'M-' + String(manualSkuSeq).padStart(4,'0');
       manualSkuSeq++;
       await persistSeq();
-      PRODUCTS.unshift({sku:newSku, name, category, brand, provider, image, cost, price, stock, minStock});
+      PRODUCTS.unshift({sku:newSku, name, category, brand, provider, image, cost, price, stock, minStock, soldByWeight});
     }
     await persistProducts();
     closeModal();
@@ -1753,33 +1839,79 @@ function renderPosResults(){
       <div style="display:flex; align-items:center; gap:10px; min-width:0;">
         ${productThumb(p, 34)}
         <div style="min-width:0;">
-          <div class="name">${esc(p.name)}</div>
+          <div class="name" style="display:flex; align-items:center; gap:6px;">${esc(p.name)}${p.soldByWeight?'<span class="badge dot" style="background:var(--green-100); color:var(--green-700);">A Granel</span>':''}</div>
           <div class="meta">SKU ${esc(p.sku)} · ${esc(p.category)} · ${stockBadge(p)}</div>
         </div>
       </div>
-      <div style="display:flex; align-items:center;"><div class="price">${fmt(p.price)}</div><span class="add-arrow">›</span></div>
+      <div style="display:flex; align-items:center;"><div class="price">${fmt(p.price)}${p.soldByWeight?'/kg':''}</div><span class="add-arrow">›</span></div>
     </div>
   `).join('') : `<div class="empty">${ICONS.empty}<div class="t">Sin resultados</div>Probá buscar por otro nombre.</div>`;
-  $all('[data-add]', box).forEach(r => r.onclick = () => addToCart(r.dataset.add));
+  $all('[data-add]', box).forEach(r => r.onclick = () => {
+    const p = PRODUCTS.find(x=>x.sku===r.dataset.add);
+    if(p && p.soldByWeight) openWeightEntryModal(p.sku);
+    else addToCart(r.dataset.add);
+  });
 }
 
+// Productos vendidos por unidad: agrega 1 unidad (o suma 1 si ya está en el carrito).
+// El stock puede llegar a 0 o quedar negativo: igual se permite vender, y se sincroniza
+// cuando se cargue stock real más adelante (no bloqueamos la venta por falta de stock).
 function addToCart(sku){
   const p = PRODUCTS.find(x=>x.sku===sku);
   if(!p) return false;
-  if(p.stock<=0){ toast('Sin stock disponible de "'+p.name+'"', true); return false; }
   const existing = cart.find(c=>c.sku===sku);
+  if(p.stock<=0) toast('Atención: "'+p.name+'" está sin stock cargado. La venta se registra igual.');
   if(existing){
-    if(existing.qty>=p.stock){ toast('No hay más stock disponible', true); return false; }
     existing.qty++;
   } else {
-    cart.push({sku:p.sku, name:p.name, price:p.price, cost:p.cost, stock:p.stock, image:p.image||'', qty:1});
+    cart.push({sku:p.sku, name:p.name, price:p.price, cost:p.cost, stock:p.stock, image:p.image||'', qty:1, unit:'unidad'});
   }
   renderCart();
   return true;
 }
 
+// Productos vendidos por peso: pide la cantidad en gramos o kilos y la agrega/actualiza en el carrito.
+function openWeightEntryModal(sku){
+  const p = PRODUCTS.find(x=>x.sku===sku);
+  if(!p) return;
+  const existing = cart.find(c=>c.sku===sku);
+  showModal(`
+    <div class="modal-head"><h3>${esc(p.name)}</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
+    <div class="modal-body">
+      <div class="hint" style="margin-bottom:8px;">Precio: <b>${fmt(p.price)}/kg</b> · Stock: ${formatWeightKg(p.stock)}</div>
+      <label class="field-label">Cantidad pedida</label>
+      <input id="fWeightQty" style="width:100%; font-size:16px;" placeholder='Ej: 150, 500g, 2,5kg' value="${existing?formatWeightKg(existing.qty).replace(' ',''):''}" autocomplete="off">
+      <div class="hint" style="margin-top:6px;">Escribí el número solo (se interpreta en gramos), o agregá "g" / "kg". Ejemplos: 150 → 150 g · 2,5kg → 2,5 kg.</div>
+      <div class="hint" id="weightPreview" style="margin-top:8px; font-weight:700;"></div>
+    </div>
+    <div class="modal-foot"><button class="btn secondary" data-close>Cancelar</button><button class="btn" id="confirmWeight">${ICONS.check} Agregar al carrito</button></div>
+  `);
+  const input = $('#fWeightQty');
+  const preview = $('#weightPreview');
+  const updatePreview = () => {
+    const kg = parseWeightToKg(input.value);
+    if(kg==null || kg<=0){ preview.textContent = ''; return; }
+    preview.textContent = formatWeightKg(kg) + ' · Subtotal: ' + fmt(roundMoney(p.price*kg));
+  };
+  input.oninput = updatePreview;
+  input.focus();
+  updatePreview();
+  const commit = () => {
+    const kg = parseWeightToKg(input.value);
+    if(kg==null || kg<=0){ toast('Ingresá una cantidad válida, ej: 150, 500g o 2,5kg', true); return; }
+    if(p.stock>0 && kg>p.stock) toast('Atención: pediste más de lo que figura en stock ('+formatWeightKg(p.stock)+'). La venta se registra igual.');
+    else if(p.stock<=0) toast('Atención: "'+p.name+'" está sin stock cargado. La venta se registra igual.');
+    if(existing){ existing.qty = kg; }
+    else { cart.push({sku:p.sku, name:p.name, price:p.price, cost:p.cost, stock:p.stock, image:p.image||'', qty:kg, unit:'kg'}); }
+    closeModal();
+    renderCart();
+  };
+  $('#confirmWeight').onclick = commit;
+  input.onkeydown = e => { if(e.key==='Enter') commit(); };
+}
+
 /* ---------- 2. Pagos mixtos ---------- */
-function cartTotal(){ return cart.reduce((a,c)=>a+(Number(c.price)||0)*(Number(c.qty)||0),0); }
+function cartTotal(){ return cart.reduce((a,c)=>a+roundMoney((Number(c.price)||0)*(Number(c.qty)||0)),0); }
 function paymentMethodLabel(method){ return ({efectivo:'Efectivo',tarjeta:'Tarjeta',transferencia:'Transferencia'})[method] || method; }
 function renderPaymentRows(){
   const box=$('#paymentRows'); if(!box) return;
@@ -1799,40 +1931,51 @@ function renderCart(){
   const box = $('#cartItems');
   const totals = $('#cartTotals');
   if(!box) return;
-  box.innerHTML = cart.length ? cart.map(c => { const product=PRODUCTS.find(p=>p.sku===c.sku)||c; return `
+  box.innerHTML = cart.length ? cart.map(c => { const product=PRODUCTS.find(p=>p.sku===c.sku)||c; const isWeight=c.unit==='kg'; return `
     <div class="cart-item" data-sku="${esc(c.sku)}">
       <div class="cart-product">${productThumb(product, 42)}<div class="name">${esc(c.name)}<div class="muted" style="font-size:11px; font-weight:400;">SKU ${esc(c.sku)}</div></div></div>
-      <div class="cart-unit">${fmt(c.price)}</div>
+      <div class="cart-unit">${formatUnitPrice(c)}</div>
+      ${isWeight ? `
+      <div class="weight-ctrl">
+        <input value="${formatWeightKg(c.qty).replace(' ','')}" data-weightinput>
+        <div class="hint muted">${formatWeightKg(c.qty)}</div>
+      </div>` : `
       <div class="qty-ctrl">
         <button data-qty="-1">${ICONS.minus}</button>
         <input value="${c.qty}" data-qtyinput>
         <button data-qty="1">${ICONS.plus}</button>
-      </div>
-      <div class="strong num cart-subtotal">${fmt(c.price*c.qty)}</div>
+      </div>`}
+      <div class="strong num cart-subtotal">${fmt(roundMoney(c.price*c.qty))}</div>
       <button class="icon-btn" data-remove>${ICONS.close}</button>
     </div>
   `; }).join('') : `<div class="empty" style="padding:30px 8px;">${ICONS.cart}<div class="t">El carrito está vacío</div>Buscá un producto a la izquierda para agregarlo.</div>`;
 
-  const total = cart.reduce((a,c)=>a+c.price*c.qty,0);
+  const total = cart.reduce((a,c)=>a+roundMoney(c.price*c.qty),0);
   const totalCost = cart.reduce((a,c)=>a+c.cost*c.qty,0);
-  const units = cart.reduce((a,c)=>a+c.qty,0);
+  const units = cart.reduce((a,c)=>a+(c.unit==='kg'?0:c.qty),0);
+  const weightItems = cart.filter(c=>c.unit==='kg');
   const pill = $('#cartPill');
-  if(pill) pill.textContent = `${cart.length} producto${cart.length===1?'':'s'} · ${units} ${units===1?'unidad':'unidades'}`;
+  if(pill){
+    const parts = [];
+    if(units>0) parts.push(`${units} ${units===1?'unidad':'unidades'}`);
+    if(weightItems.length) parts.push(weightItems.map(c=>formatWeightKg(c.qty)).join(' + '));
+    pill.textContent = `${cart.length} producto${cart.length===1?'':'s'} · ${parts.join(' · ') || '0 unidades'}`;
+  }
   totals.innerHTML = cart.length ? `
-    <div class="cart-total-row"><span class="muted">Unidades totales</span><span class="strong">${units}</span></div>
+    <div class="cart-total-row"><span class="muted">Unidades totales</span><span class="strong">${units}${weightItems.length?' + '+weightItems.map(c=>formatWeightKg(c.qty)).join(' + '):''}</span></div>
     <div class="cart-total-row"><span class="muted">Subtotal</span><span class="strong">${fmt(total)}</span></div>
     <div class="cart-total-row grand"><span>Total</span><span>${fmt(total)}</span></div>
   ` : '';
   renderPaymentRows();
 
+  // Los botones +/- y el stock disponible son solo orientativos: no bloquean la venta.
+  // El stock puede llegar a 0 o negativo; se sincroniza cuando se recargue el stock real.
   $all('[data-qty]', box).forEach(b => b.onclick = () => {
     const sku = b.closest('.cart-item').dataset.sku;
     const item = cart.find(c=>c.sku===sku);
     const delta = parseInt(b.dataset.qty);
-    const p = PRODUCTS.find(x=>x.sku===sku);
     const next = item.qty + delta;
     if(next<=0){ cart = cart.filter(c=>c.sku!==sku); }
-    else if(p && next>p.stock){ toast('No hay más stock disponible', true); return; }
     else { item.qty = next; }
     renderCart();
   });
@@ -1840,20 +1983,24 @@ function renderCart(){
     inp.oninput = () => {
       const sku = inp.closest('.cart-item').dataset.sku;
       const item = cart.find(c=>c.sku===sku);
-      const p = PRODUCTS.find(x=>x.sku===sku);
       let v = Math.round(parseFloat(inp.value))||0;
       if(v<=0) return; // esperar a que termine de escribir antes de quitar la fila
-      if(p && v>p.stock) v=p.stock;
       item.qty = v;
       // Actualiza subtotal, totales y pagos sin perder el foco del input mientras se escribe.
       const row = inp.closest('.cart-item');
-      row.querySelector('.cart-subtotal').textContent = fmt(item.price*item.qty);
-      const total = cart.reduce((a,c)=>a+c.price*c.qty,0);
-      const totalUnits = cart.reduce((a,c)=>a+c.qty,0);
+      row.querySelector('.cart-subtotal').textContent = fmt(roundMoney(item.price*item.qty));
+      const total = cart.reduce((a,c)=>a+roundMoney(c.price*c.qty),0);
+      const totalUnits = cart.reduce((a,c)=>a+(c.unit==='kg'?0:c.qty),0);
+      const totalWeightItems = cart.filter(c=>c.unit==='kg');
       const pill = $('#cartPill');
-      if(pill) pill.textContent = `${cart.length} producto${cart.length===1?'':'s'} · ${totalUnits} ${totalUnits===1?'unidad':'unidades'}`;
+      if(pill){
+        const parts = [];
+        if(totalUnits>0) parts.push(`${totalUnits} ${totalUnits===1?'unidad':'unidades'}`);
+        if(totalWeightItems.length) parts.push(totalWeightItems.map(c=>formatWeightKg(c.qty)).join(' + '));
+        pill.textContent = `${cart.length} producto${cart.length===1?'':'s'} · ${parts.join(' · ') || '0 unidades'}`;
+      }
       totals.innerHTML = `
-        <div class="cart-total-row"><span class="muted">Unidades totales</span><span class="strong">${totalUnits}</span></div>
+        <div class="cart-total-row"><span class="muted">Unidades totales</span><span class="strong">${totalUnits}${totalWeightItems.length?' + '+totalWeightItems.map(c=>formatWeightKg(c.qty)).join(' + '):''}</span></div>
         <div class="cart-total-row"><span class="muted">Subtotal</span><span class="strong">${fmt(total)}</span></div>
         <div class="cart-total-row grand"><span>Total</span><span>${fmt(total)}</span></div>
       `;
@@ -1862,12 +2009,27 @@ function renderCart(){
     inp.onchange = () => {
       const sku = inp.closest('.cart-item').dataset.sku;
       const item = cart.find(c=>c.sku===sku);
-      const p = PRODUCTS.find(x=>x.sku===sku);
       let v = Math.round(parseFloat(inp.value))||0;
       if(v<=0){ cart = cart.filter(c=>c.sku!==sku); }
-      else { if(p && v>p.stock){ v=p.stock; toast('Ajustado al stock disponible ('+p.stock+')', true); } item.qty = v; }
+      else { item.qty = v; }
       renderCart();
     };
+  });
+  // Input de peso (gramos o kilos) para productos vendidos por peso.
+  $all('[data-weightinput]', box).forEach(inp => {
+    const commit = (removeIfInvalid) => {
+      const sku = inp.closest('.cart-item').dataset.sku;
+      const item = cart.find(c=>c.sku===sku);
+      const kg = parseWeightToKg(inp.value);
+      if(kg==null || kg<=0){
+        if(removeIfInvalid){ cart = cart.filter(c=>c.sku!==sku); renderCart(); }
+        return;
+      }
+      item.qty = kg;
+      renderCart();
+    };
+    inp.onchange = () => commit(true);
+    inp.onkeydown = e => { if(e.key==='Enter') { commit(true); } };
   });
   $all('[data-remove]', box).forEach(b => b.onclick = () => {
     const sku = b.closest('.cart-item').dataset.sku;
@@ -1878,11 +2040,13 @@ function renderCart(){
 
 async function confirmSale(){
   if(!cart.length){ toast('Agregá al menos un producto', true); return; }
+  // No bloqueamos la venta por falta de stock: el stock puede quedar en 0 o negativo
+  // y se sincroniza automáticamente cuando se cargue el stock real más adelante.
   for(const c of cart){
     const p = PRODUCTS.find(x=>x.sku===c.sku);
-    if(!p || c.qty>p.stock){ toast('Stock insuficiente para "'+c.name+'"', true); return; }
+    if(!p){ toast('El producto "'+c.name+'" ya no existe en el catálogo', true); return; }
   }
-  const items = cart.map(c => ({sku:c.sku, name:c.name, qty:c.qty, price:c.price, cost:c.cost, total:c.price*c.qty}));
+  const items = cart.map(c => ({sku:c.sku, name:c.name, qty:c.qty, unit:c.unit||'unidad', price:c.price, cost:c.cost, total:roundMoney(c.price*c.qty)}));
   const total = items.reduce((a,i)=>a+i.total,0);
   const payments = paymentDraft.map(p=>({method:p.method,amount:Math.round((Number(p.amount)||0)*100)/100})).filter(p=>p.amount>0);
   const paid = payments.reduce((a,p)=>a+p.amount,0);
@@ -1952,7 +2116,7 @@ function ticketBodyHtml(sale){
       ${sale.items.map(i=>`
         <div class="t-item">
           <div class="t-item-name"><span>${esc(i.name)}</span><span>${fmt(i.total)}</span></div>
-          <div class="t-item-meta"><span>${fmtInt(i.qty)} x ${fmt(i.price)}</span></div>
+          <div class="t-item-meta"><span>${formatItemQty(i)} x ${formatUnitPrice(i)}</span></div>
         </div>
       `).join('')}
     </div>
@@ -2108,7 +2272,7 @@ function renderHistorial(){
         <tbody>${list.slice(0,300).map(s => `<tr>
           <td><div class="strong">#${esc(String(s.id||'').replace('V-',''))}</div>${s.clientName?`<div class="muted" style="font-size:11px;">${esc(s.clientName)}</div>`:(s.reference?`<div class="muted" style="font-size:11px;">${esc(s.reference)}</div>`:'')}</td>
           <td class="num">${fmtDateTime(s.date)}</td>
-          <td><div class="strong" style="font-size:12px;">${s.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</div>${s.note?`<div class="muted" style="font-size:11px; margin-top:3px;">${esc(s.note)}</div>`:''}</td>
+          <td><div class="strong" style="font-size:12px;">${s.items.map(i=>esc(i.name)+' ×'+(i.unit==='kg'?formatWeightKg(i.qty):i.qty)).join(', ')}</div>${s.note?`<div class="muted" style="font-size:11px; margin-top:3px;">${esc(s.note)}</div>`:''}</td>
           <td>${(s.payments&&s.payments.length?s.payments:[{method:'efectivo',amount:s.total}]).map(p=>`<span class="badge ok" style="margin:1px 3px 1px 0;">${paymentMethodLabel(p.method)} ${fmt(p.amount)}</span>`).join('')}</td>
           <td class="num" style="text-align:right;">${s.items.reduce((a,i)=>a+i.qty,0)}</td>
           <td class="num" style="text-align:right;">${fmt(s.total)}</td>
@@ -2130,7 +2294,12 @@ function renderHistorial(){
 }
 
 function recomputeSale(sale){
-  sale.items = sale.items.filter(i=>i.qty>0).map(i=>({ ...i, qty:Math.max(1,Math.round(i.qty||0)), price:Math.max(0,Number(i.price)||0), cost:Math.max(0,Number(i.cost)||0), total:Math.max(0,Number(i.price)||0)*Math.max(1,Math.round(i.qty||0)) }));
+  sale.items = sale.items.filter(i=>i.qty>0).map(i=>{
+    const isWeight = i.unit==='kg';
+    const qty = isWeight ? Math.max(0.001, Math.round((i.qty||0)*1000)/1000) : Math.max(1, Math.round(i.qty||0));
+    const price = Math.max(0, Number(i.price)||0);
+    return { ...i, qty, price, cost:Math.max(0,Number(i.cost)||0), total:roundMoney(price*qty) };
+  });
   sale.total = sale.items.reduce((a,i)=>a+i.total,0);
   sale.totalCost = sale.items.reduce((a,i)=>a+i.cost*i.qty,0);
   sale.profit = sale.total-sale.totalCost;
@@ -2158,19 +2327,23 @@ function openSaleEditor(id){
         <div class="field-row"><div><label class="field-label">Fecha y hora</label><input id="editSaleDate" type="datetime-local" style="width:100%;" value="${new Date(sale.date).toISOString().slice(0,16)}"></div><div><label class="field-label">Referencia o comprador</label><input id="editSaleReference" style="width:100%;" value="${esc(sale.reference||'')}"></div></div>
         <div><label class="field-label">Nota interna</label><input id="editSaleNote" style="width:100%;" value="${esc(sale.note||'')}"></div>
         <div style="overflow:auto; margin-top:12px;"><table><thead><tr><th>Producto</th><th style="text-align:right;">Cantidad</th><th style="text-align:right;">Precio unit.</th><th></th></tr></thead><tbody>
-          ${sale.items.map((i,n)=>`<tr><td><div class="strong">${esc(i.name)}</div><div class="muted">SKU ${esc(i.sku)}</div></td><td style="text-align:right;"><input data-edit-qty="${n}" type="number" min="0" step="1" value="${i.qty}" style="width:76px; text-align:right;"></td><td style="text-align:right;"><input data-edit-price="${n}" type="number" min="0" step="0.01" value="${i.price}" style="width:112px; text-align:right;"></td><td style="text-align:right;"><button class="icon-btn" data-edit-remove="${n}" title="Quitar producto">${ICONS.close}</button></td></tr>`).join('')}
+          ${sale.items.map((i,n)=>`<tr><td><div class="strong">${esc(i.name)}</div><div class="muted">SKU ${esc(i.sku)}${i.unit==='kg'?' · por kg':''}</div></td><td style="text-align:right;"><input data-edit-qty="${n}" type="number" min="0" step="${i.unit==='kg'?'0.001':'1'}" value="${i.qty}" style="width:76px; text-align:right;"></td><td style="text-align:right;"><input data-edit-price="${n}" type="number" min="0" step="0.01" value="${i.price}" style="width:112px; text-align:right;"></td><td style="text-align:right;"><button class="icon-btn" data-edit-remove="${n}" title="Quitar producto">${ICONS.close}</button></td></tr>`).join('')}
         </tbody></table></div>
-        <div class="hint" style="margin-top:10px;">La modificación ajusta automáticamente el stock según la diferencia de cantidades.</div>
+        <div class="hint" style="margin-top:10px;">La modificación ajusta automáticamente el stock según la diferencia de cantidades. Los productos por peso aceptan decimales (kg).</div>
       </div>
       <div class="modal-foot"><button class="btn secondary" id="printSaleEdit" style="margin-right:auto;">${ICONS.print} Reimprimir ticket</button><button class="btn secondary" data-close>Cancelar</button><button class="btn" id="saveSaleEdit">${ICONS.check} Guardar venta</button></div>
     `);
     $all('[data-edit-remove]').forEach(b=>b.onclick=()=>{ sale.items.splice(+b.dataset.editRemove,1); draw(); });
     $('#printSaleEdit').onclick = () => openTicketModal(original);
     $('#saveSaleEdit').onclick = async () => {
-      sale.items.forEach((i,n)=>{ i.qty=Math.max(0,Math.round(parseFloat($(`[data-edit-qty="${n}"]`).value)||0)); i.price=Math.max(0,parseFloat($(`[data-edit-price="${n}"]`).value)||0); });
+      sale.items.forEach((i,n)=>{
+        const raw = parseFloat($(`[data-edit-qty="${n}"]`).value)||0;
+        i.qty = i.unit==='kg' ? Math.max(0, Math.round(raw*1000)/1000) : Math.max(0, Math.round(raw));
+        i.price=Math.max(0,parseFloat($(`[data-edit-price="${n}"]`).value)||0);
+      });
       if(!sale.items.some(i=>i.qty>0)){ toast('La venta debe tener al menos un producto', true); return; }
-      const oldBySku = new Map(original.items.map(i=>[i.sku,i.qty]));
-      for(const i of sale.items){ const p=PRODUCTS.find(x=>x.sku===i.sku); const available=(p?p.stock:0)+(oldBySku.get(i.sku)||0); if(!p || i.qty>available){ toast('Stock insuficiente para "'+i.name+'"', true); return; } }
+      // No bloqueamos por falta de stock: el stock puede quedar en 0 o negativo y se sincroniza después.
+      for(const i of sale.items){ const p=PRODUCTS.find(x=>x.sku===i.sku); if(!p){ toast('El producto "'+i.name+'" ya no existe en el catálogo', true); return; } }
       original.items.forEach(i=>{ const p=PRODUCTS.find(x=>x.sku===i.sku); if(p) p.stock+=i.qty; });
       sale.items.forEach(i=>{ const p=PRODUCTS.find(x=>x.sku===i.sku); p.stock-=i.qty; });
       sale.date = new Date($('#editSaleDate').value).toISOString(); sale.reference=$('#editSaleReference').value.trim(); sale.note=$('#editSaleNote').value.trim(); recomputeSale(sale);
