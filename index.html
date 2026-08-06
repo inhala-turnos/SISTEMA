@@ -2088,7 +2088,7 @@ function renderHistorial(){
           <td class="num" style="text-align:right;">${s.items.reduce((a,i)=>a+i.qty,0)}</td>
           <td class="num" style="text-align:right;">${fmt(s.total)}</td>
           <td class="num" style="text-align:right; color:var(--green-700); font-weight:700;">${fmt(s.profit)}</td>
-          <td style="text-align:right; white-space:nowrap;"><div class="sale-history-actions"><button class="icon-btn" data-sale-ticket="${esc(s.id)}" title="Reimprimir ticket">${ICONS.print}</button><button class="btn secondary sm" data-sale-edit="${esc(s.id)}">${ICONS.edit} Ver / editar</button><button class="icon-btn" data-sale-del="${esc(s.id)}" title="Eliminar venta">${ICONS.trash}</button></div></td>
+          <td style="text-align:right; white-space:nowrap;"><div class="sale-history-actions"><button class="btn secondary sm" data-sale-ticket="${esc(s.id)}" title="Imprimir ticket">${ICONS.print} Imprimir ticket</button><button class="btn secondary sm" data-sale-edit="${esc(s.id)}">${ICONS.edit} Ver / editar</button><button class="icon-btn" data-sale-del="${esc(s.id)}" title="Eliminar venta">${ICONS.trash}</button></div></td>
         </tr>`).join('')}</tbody>
       </table>${list.length>300?`<div class="hint" style="margin-top:8px;">Mostrando las 300 ventas más recientes del rango filtrado.</div>`:''}` : `<div class="empty">${ICONS.empty}<div class="t">No hay ventas para mostrar</div></div>`}
     </div>
