@@ -1087,6 +1087,7 @@ function renderProductos(){
       <div style="margin-left:auto; display:flex; gap:8px;">
         <button class="btn secondary" id="btnImportPrices">${ICONS.upload} Importar precios</button>
         <button class="btn secondary" id="btnBulkPrice">${ICONS.layers} Ajustar precios por lote</button>
+        <button class="btn secondary" id="btnBulkEdit">${ICONS.edit} Editar en lote</button>
         <button class="btn" id="btnNewProduct">${ICONS.plus} Nuevo producto</button>
       </div>
     </div>
@@ -1109,6 +1110,7 @@ function renderProductos(){
     <div class="card" style="padding:10px 16px; margin-bottom:14px; display:flex; align-items:center; gap:12px; background:var(--green-50); border-color:var(--green-500);">
       <span class="strong" style="font-size:13px;">${fmtInt(selectedSkus.size)} producto${selectedSkus.size===1?'':'s'} seleccionado${selectedSkus.size===1?'':'s'}</span>
       <button class="btn sm" id="btnBulkFromSelection">${ICONS.layers} Ajustar precio de la selección</button>
+      <button class="btn sm secondary" id="btnBulkEditFromSelection">${ICONS.edit} Editar la selección</button>
       <button class="btn ghost sm" id="btnClearSelection" style="margin-left:auto;">Limpiar selección</button>
     </div>` : ''}
 
@@ -1165,6 +1167,8 @@ function renderProductos(){
   $('#btnImportPrices').onclick = openPriceImportModal;
   $('#btnBulkPrice').onclick = () => openBulkPriceModal();
   if($('#btnBulkFromSelection')) $('#btnBulkFromSelection').onclick = () => openBulkPriceModal('sel');
+  $('#btnBulkEdit').onclick = () => openBulkEditModal();
+  if($('#btnBulkEditFromSelection')) $('#btnBulkEditFromSelection').onclick = () => openBulkEditModal('sel');
   if($('#btnClearSelection')) $('#btnClearSelection').onclick = () => { selectedSkus.clear(); renderProductos(); };
   $('#pPrev').onclick = () => { pf.page--; renderProductos(); };
   $('#pNext').onclick = () => { pf.page++; renderProductos(); };
@@ -1508,6 +1512,197 @@ function openBulkPriceModal(defaultScope){
     await persistProducts();
     closeModal();
     toast(`Precio actualizado en ${fmtInt(list.length)} producto${list.length===1?'':'s'}`);
+    renderProductos();
+    if(VIEW==='dashboard') renderDashboard();
+  };
+}
+
+/* ---------- Edición masiva de datos por lote (categoría / marca / proveedor / imagen / unidad / stock mínimo) ---------- */
+function openBulkEditModal(defaultScope){
+  const cats = getCategories();
+  const brandsList = getBrands().filter(b=>b!=='Sin marca');
+  const filteredCount = filteredProducts().length;
+  const initialScope = defaultScope || (selectedSkus.size>0 ? 'sel' : 'filtered');
+
+  showModal(`
+    <div class="modal-head"><h3>${ICONS.edit} Editar productos en lote</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
+    <div class="modal-body">
+      <div>
+        <label class="field-label">¿A qué productos aplicar los cambios?</label>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+            <input type="radio" name="beScope" value="sel" ${initialScope==='sel'?'checked':''} ${selectedSkus.size===0?'disabled':''}>
+            Productos seleccionados en la tabla <span class="muted">(${fmtInt(selectedSkus.size)})</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+            <input type="radio" name="beScope" value="cat" ${initialScope==='cat'?'checked':''}>
+            Toda una categoría:
+            <select id="beScopeCatSelect" style="flex:1;" ${cats.length===0?'disabled':''}>
+              ${cats.map(c=>`<option value="${esc(c)}">${esc(c)} (${fmtInt(PRODUCTS.filter(p=>p.category===c).length)})</option>`).join('')}
+            </select>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+            <input type="radio" name="beScope" value="filtered" ${initialScope==='filtered'?'checked':''}>
+            Resultados filtrados actualmente en la tabla <span class="muted">(${fmtInt(filteredCount)})</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+            <input type="radio" name="beScope" value="all" ${initialScope==='all'?'checked':''}>
+            Todo el catálogo <span class="muted">(${fmtInt(PRODUCTS.length)})</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="hint" style="margin-top:2px;">Tildá solo los campos que querés cambiar. Los que dejes destildados no se tocan.</div>
+
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:6px;">
+
+        <div style="display:flex; align-items:flex-end; gap:10px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; flex:0 0 150px; padding-bottom:9px;">
+            <input type="checkbox" class="beToggle" data-field="category"> Categoría
+          </label>
+          <div style="flex:1;">
+            <input id="beCategory" style="width:100%;" list="beCatList" placeholder="Ej: Snack" disabled>
+            <datalist id="beCatList">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:flex-end; gap:10px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; flex:0 0 150px; padding-bottom:9px;">
+            <input type="checkbox" class="beToggle" data-field="brand"> Marca
+          </label>
+          <div style="flex:1;">
+            <input id="beBrand" style="width:100%;" list="beBrandList" placeholder="Ej: Progen, Sudanta" disabled>
+            <datalist id="beBrandList">${brandsList.map(b=>`<option value="${esc(b)}">`).join('')}</datalist>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:flex-end; gap:10px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; flex:0 0 150px; padding-bottom:9px;">
+            <input type="checkbox" class="beToggle" data-field="provider"> Proveedor
+          </label>
+          <div style="flex:1;">
+            <input id="beProvider" style="width:100%;" placeholder="Opcional" disabled>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:flex-end; gap:10px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; flex:0 0 150px; padding-bottom:9px;">
+            <input type="checkbox" class="beToggle" data-field="image"> Imagen
+          </label>
+          <div style="flex:1; display:flex; align-items:center; gap:10px;">
+            <input id="beImage" style="flex:1;" placeholder="https://ejemplo.com/foto-producto.jpg" disabled>
+            <div id="beImgPreviewWrap">${productThumb({image:''}, 40)}</div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; flex:0 0 150px; padding-top:2px;">
+            <input type="checkbox" class="beToggle" data-field="soldByWeight"> Unidad de venta
+          </label>
+          <div style="flex:1;">
+            <div class="unit-toggle">
+              <label><input type="radio" name="beUnit" value="unidad" checked disabled id="beUnitUnidad"> Por unidad</label>
+              <label><input type="radio" name="beUnit" value="kg" disabled id="beUnitKg"> A granel, por peso (kg)</label>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:flex-end; gap:10px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; flex:0 0 150px; padding-bottom:9px;">
+            <input type="checkbox" class="beToggle" data-field="minStock"> Alerta de stock bajo
+          </label>
+          <div style="flex:1;">
+            <input id="beMinStock" type="number" min="0" step="0.001" style="width:100%;" placeholder="Ej: 5" disabled>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="hint" id="bePreview" style="background:var(--green-50); border:1px solid var(--green-100); border-radius:8px; padding:10px 12px; color:var(--ink); margin-top:4px;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn secondary" data-close>Cancelar</button>
+      <button class="btn" id="applyBulkEdit">${ICONS.check} Aplicar cambios</button>
+    </div>
+  `);
+
+  const fieldInputs = {
+    category: $('#beCategory'), brand: $('#beBrand'), provider: $('#beProvider'),
+    image: $('#beImage'), minStock: $('#beMinStock')
+  };
+
+  $all('.beToggle').forEach(chk => {
+    chk.onchange = () => {
+      const field = chk.dataset.field;
+      const enabled = chk.checked;
+      if(field==='soldByWeight'){
+        $('#beUnitUnidad').disabled = !enabled;
+        $('#beUnitKg').disabled = !enabled;
+      } else {
+        fieldInputs[field].disabled = !enabled;
+        if(enabled) fieldInputs[field].focus();
+      }
+      updateBePreview();
+    };
+  });
+
+  $('#beImage').addEventListener('input', () => {
+    $('#beImgPreviewWrap').innerHTML = productThumb({image:$('#beImage').value}, 40);
+  });
+
+  const getBeScope = () => $('input[name="beScope"]:checked') ? $('input[name="beScope"]:checked').value : 'filtered';
+  function updateBePreview(){
+    const scope = getBeScope();
+    const catVal = $('#beScopeCatSelect') ? $('#beScopeCatSelect').value : '';
+    const list = scopeProducts(scope, catVal);
+    const activeFields = $all('.beToggle:checked').map(c => c.dataset.field);
+    const labels = {category:'categoría', brand:'marca', provider:'proveedor', image:'imagen', soldByWeight:'unidad de venta', minStock:'alerta de stock bajo'};
+    const p = $('#bePreview');
+    if(!list.length){
+      p.textContent = 'No hay productos en este grupo.';
+    } else if(!activeFields.length){
+      p.textContent = `Tildá al menos un campo para actualizar los ${fmtInt(list.length)} producto${list.length===1?'':'s'} de este grupo.`;
+    } else {
+      p.textContent = `Se va a actualizar ${activeFields.map(f=>labels[f]).join(', ')} de ${fmtInt(list.length)} producto${list.length===1?'':'s'}.`;
+    }
+  }
+  $all('input[name="beScope"]').forEach(r => r.onchange = updateBePreview);
+  if($('#beScopeCatSelect')) $('#beScopeCatSelect').onchange = updateBePreview;
+  updateBePreview();
+
+  $('#applyBulkEdit').onclick = async () => {
+    const scope = getBeScope();
+    const catVal = $('#beScopeCatSelect') ? $('#beScopeCatSelect').value : '';
+    const list = scopeProducts(scope, catVal);
+    const activeFields = $all('.beToggle:checked').map(c => c.dataset.field);
+    if(!list.length){ toast('No hay productos en ese grupo', true); return; }
+    if(!activeFields.length){ toast('Tildá al menos un campo para actualizar', true); return; }
+
+    const newCategory = $('#beCategory').value.trim();
+    const newBrand = $('#beBrand').value.trim();
+    const newProvider = $('#beProvider').value.trim();
+    const newImage = $('#beImage').value.trim();
+    const newSoldByWeight = $('#beUnitKg').checked;
+    const newMinStockRaw = $('#beMinStock').value;
+    const newMinStock = parseFloat(newMinStockRaw);
+
+    if(activeFields.includes('category') && !newCategory){ toast('Ingresá una categoría', true); return; }
+    if(activeFields.includes('minStock') && (newMinStockRaw==='' || isNaN(newMinStock) || newMinStock<0)){ toast('Ingresá un valor válido para la alerta de stock bajo', true); return; }
+
+    const skuSet = new Set(list.map(p=>p.sku));
+    PRODUCTS.forEach(p => {
+      if(!skuSet.has(p.sku)) return;
+      if(activeFields.includes('category')) p.category = newCategory;
+      if(activeFields.includes('brand')) p.brand = newBrand;
+      if(activeFields.includes('provider')) p.provider = newProvider;
+      if(activeFields.includes('image')) p.image = newImage;
+      if(activeFields.includes('soldByWeight')) p.soldByWeight = newSoldByWeight;
+      if(activeFields.includes('minStock')) p.minStock = newMinStock;
+    });
+
+    await persistProducts();
+    closeModal();
+    toast(`${fmtInt(list.length)} producto${list.length===1?'':'s'} actualizado${list.length===1?'':'s'}`);
     renderProductos();
     if(VIEW==='dashboard') renderDashboard();
   };
