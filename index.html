@@ -716,6 +716,15 @@ function waitForCloud(){
   return new Promise(resolve => window.addEventListener('inhala-cloud-ready', () => resolve(window.inhalaCloud), {once:true}));
 }
 
+// Imágenes verificadas contra el catálogo del proveedor. La clave es el SKU interno.
+const PRODUCT_IMAGE_URLS = {
+  "0619":"https://distribuidorapepino.com.ar/web/image/product.template/1923/image_512","0764":"https://distribuidorapepino.com.ar/web/image/product.template/3249/image_512","0769":"https://distribuidorapepino.com.ar/web/image/product.template/3071/image_512","0773":"https://distribuidorapepino.com.ar/web/image/product.template/3353/image_512","0978":"https://distribuidorapepino.com.ar/web/image/product.template/4313/image_512","0979":"https://distribuidorapepino.com.ar/web/image/product.template/4311/image_512","1826":"https://distribuidorapepino.com.ar/web/image/product.template/2033/image_512","1827":"https://distribuidorapepino.com.ar/web/image/product.template/3837/image_512","1828":"https://distribuidorapepino.com.ar/web/image/product.template/3068/image_512","1829":"https://distribuidorapepino.com.ar/web/image/product.template/3849/image_512","1832":"https://distribuidorapepino.com.ar/web/image/product.template/3348/image_512","1833":"https://distribuidorapepino.com.ar/web/image/product.template/3156/image_512","1834":"https://distribuidorapepino.com.ar/web/image/product.template/3851/image_512","1836":"https://distribuidorapepino.com.ar/web/image/product.template/1665/image_512","2023":"https://distribuidorapepino.com.ar/web/image/product.template/3241/image_512","2086":"https://distribuidorapepino.com.ar/web/image/product.template/1666/image_512","2088":"https://distribuidorapepino.com.ar/web/image/product.template/3074/image_512","2089":"https://distribuidorapepino.com.ar/web/image/product.template/3072/image_512","2091":"https://distribuidorapepino.com.ar/web/image/product.template/3846/image_512","2096":"https://distribuidorapepino.com.ar/web/image/product.template/3843/image_512","2097":"https://distribuidorapepino.com.ar/web/image/product.template/2888/image_512","2099":"https://distribuidorapepino.com.ar/web/image/product.template/3106/image_512","2100":"https://distribuidorapepino.com.ar/web/image/product.template/3104/image_512","2105":"https://distribuidorapepino.com.ar/web/image/product.template/2638/image_512","2107":"https://distribuidorapepino.com.ar/web/image/product.template/3847/image_512","2108":"https://distribuidorapepino.com.ar/web/image/product.template/2583/image_512","2110":"https://distribuidorapepino.com.ar/web/image/product.template/1690/image_512","2112":"https://distribuidorapepino.com.ar/web/image/product.template/1685/image_512","2114":"https://distribuidorapepino.com.ar/web/image/product.template/3075/image_512","2117":"https://distribuidorapepino.com.ar/web/image/product.template/1691/image_512","2119":"https://distribuidorapepino.com.ar/web/image/product.template/4167/image_512","2120":"https://distribuidorapepino.com.ar/web/image/product.template/4420/image_512","2121":"https://distribuidorapepino.com.ar/web/image/product.template/1975/image_512","2123":"https://distribuidorapepino.com.ar/web/image/product.template/3294/image_512","2125":"https://distribuidorapepino.com.ar/web/image/product.template/2735/image_512","2127":"https://distribuidorapepino.com.ar/web/image/product.template/1694/image_512","2129":"https://distribuidorapepino.com.ar/web/image/product.template/3940/image_512","2130":"https://distribuidorapepino.com.ar/web/image/product.template/3392/image_512","2133":"https://distribuidorapepino.com.ar/web/image/product.template/3055/image_512","2134":"https://distribuidorapepino.com.ar/web/image/product.template/3960/image_512","2136":"https://distribuidorapepino.com.ar/web/image/product.template/1699/image_512","2138":"https://distribuidorapepino.com.ar/web/image/product.template/3274/image_512","2139":"https://distribuidorapepino.com.ar/web/image/product.template/2042/image_512","2140":"https://distribuidorapepino.com.ar/web/image/product.template/2044/image_512","2142":"https://distribuidorapepino.com.ar/web/image/product.template/2871/image_512","2144":"https://distribuidorapepino.com.ar/web/image/product.template/3943/image_512","2149":"https://distribuidorapepino.com.ar/web/image/product.template/3472/image_512","2150":"https://distribuidorapepino.com.ar/web/image/product.template/3470/image_512","2152":"https://distribuidorapepino.com.ar/web/image/product.template/3469/image_512","2153":"https://distribuidorapepino.com.ar/web/image/product.template/3467/image_512","2155":"https://distribuidorapepino.com.ar/web/image/product.template/3058/image_512","2156":"https://distribuidorapepino.com.ar/web/image/product.template/3056/image_512","2159":"https://distribuidorapepino.com.ar/web/image/product.template/2103/image_512","2161":"https://distribuidorapepino.com.ar/web/image/product.template/2105/image_512","2162":"https://distribuidorapepino.com.ar/web/image/product.template/1704/image_512","2163":"https://distribuidorapepino.com.ar/web/image/product.template/1702/image_512","2165":"https://distribuidorapepino.com.ar/web/image/product.template/3016/image_512","2166":"https://distribuidorapepino.com.ar/web/image/product.template/3014/image_512","2168":"https://distribuidorapepino.com.ar/web/image/product.template/1705/image_512","2170":"https://distribuidorapepino.com.ar/web/image/product.template/3322/image_512","2384":"https://distribuidorapepino.com.ar/web/image/product.template/4298/image_512","2385":"https://distribuidorapepino.com.ar/web/image/product.template/4296/image_512","2387":"https://distribuidorapepino.com.ar/web/image/product.template/4304/image_512","2388":"https://distribuidorapepino.com.ar/web/image/product.template/4302/image_512","2390":"https://distribuidorapepino.com.ar/web/image/product.template/4301/image_512","2391":"https://distribuidorapepino.com.ar/web/image/product.template/4299/image_512","3247":"https://distribuidorapepino.com.ar/web/image/product.template/4412/image_512","3308":"https://distribuidorapepino.com.ar/web/image/product.template/4307/image_512","3309":"https://distribuidorapepino.com.ar/web/image/product.template/4305/image_512","3311":"https://distribuidorapepino.com.ar/web/image/product.template/4295/image_512","3312":"https://distribuidorapepino.com.ar/web/image/product.template/4293/image_512","3557":"https://distribuidorapepino.com.ar/web/image/product.template/1978/image_512","3559":"https://distribuidorapepino.com.ar/web/image/product.template/3065/image_512","3560":"https://distribuidorapepino.com.ar/web/image/product.template/1713/image_512","3616":"https://distribuidorapepino.com.ar/web/image/product.template/3031/image_512","3617":"https://distribuidorapepino.com.ar/web/image/product.template/4129/image_512","3621":"https://distribuidorapepino.com.ar/web/image/product.template/3037/image_512","3622":"https://distribuidorapepino.com.ar/web/image/product.template/4131/image_512"};
+function backfillImages(){
+  if(!Array.isArray(PRODUCTS) || !PRODUCTS.length) return false;
+  let changed = false;
+  PRODUCTS.forEach(p=>{ const url = PRODUCT_IMAGE_URLS[String(p.sku)]; if(url && p.image !== url){ p.image = url; changed = true; } });
+  return changed;
+}
 function backfillBrands(){
   // Completa/actualiza la marca de cada producto ya guardado (nube o local)
   // usando el listado de referencia embebido en la app, matcheando por SKU
@@ -755,7 +764,8 @@ async function loadData(){
     if(!remote.settingsExists) await CLOUD.saveSettings(APP_SETTINGS);
     const weightMigrated = applyAutomaticWeightSales(PRODUCTS);
     const brandsMigrated = backfillBrands();
-    if(weightMigrated || brandsMigrated) await persistProducts();
+    const imagesMigrated = backfillImages();
+    if(weightMigrated || brandsMigrated || imagesMigrated) await persistProducts();
     return;
   }
 
@@ -763,7 +773,7 @@ async function loadData(){
   if(!prods){
     prods = (window.__INHALA_PRODUCTS__ || []).map(r => ({
       sku: r[0], name: r[1], price: r[2], provider: r[3] || 'Sin proveedor',
-      category: r[4] || 'Otros', brand: r[5] || 'Sin marca', cost: 0, stock: 0, minStock: 5, image: ''
+      category: r[4] || 'Otros', brand: r[5] || 'Sin marca', cost: 0, stock: 0, minStock: 5, image: PRODUCT_IMAGE_URLS[String(r[0])] || ''
     }));
     await storageSet('inhala_products', prods);
   }
@@ -779,8 +789,9 @@ async function loadData(){
   manualSkuSeq = seq || 1;
   const migratedWeightProducts = applyAutomaticWeightSales(PRODUCTS);
   const migratedBrands = backfillBrands();
+  const migratedImages = backfillImages();
   applyAppearance();
-  if(migratedWeightProducts || migratedBrands) await storageSet('inhala_products', PRODUCTS);
+  if(migratedWeightProducts || migratedBrands || migratedImages) await storageSet('inhala_products', PRODUCTS);
   // Primer respaldo: si la nube no responde, los snapshots locales quedan en cola.
   await Promise.all([cloudSave('products',{products:PRODUCTS,seq:manualSkuSeq}), cloudSave('sales',SALES), cloudSave('clients',CLIENTS), cloudSave('settings',APP_SETTINGS)]);
 }
