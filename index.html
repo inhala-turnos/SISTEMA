@@ -1059,17 +1059,23 @@ function normalizeSearchToken(token){
   return t.replace(/(?:es|s)$/,'');
 }
 function productSearchScore(product, query){
-  const text = [product.name, product.sku, product.provider, product.brand, product.category].map(normalizeSearchText).join(' ');
+  // Solo busca por descripción (nombre del producto), no por SKU/proveedor/marca/categoría.
+  const text = normalizeSearchText(product.name);
   const phrase = normalizeSearchText(query);
   if(!phrase) return 1;
   if(text.includes(phrase)) return 100;
   const terms = phrase.split(' ').map(normalizeSearchToken).filter(t=>t.length>=2);
+  if(!terms.length) return 0;
   const words = text.split(' ').map(normalizeSearchToken);
-  let matches = 0;
-  terms.forEach(term=>{
-    if(words.some(word=>word===term || (term.length>=3 && (word.includes(term) || term.includes(word))))) matches++;
-  });
-  return matches ? matches * 10 + (matches===terms.length ? 20 : 0) : 0;
+  // Exige que TODOS los términos buscados coincidan con alguna palabra del producto
+  // (match exacto, o por prefijo si el término tiene 3+ letras). Se eliminó el
+  // substring bidireccional (word.includes(term) || term.includes(word)) que
+  // provocaba coincidencias con productos sin relación alguna.
+  const allMatch = terms.every(term =>
+    words.some(word => word===term || (term.length>=3 && word.startsWith(term)))
+  );
+  if(!allMatch) return 0;
+  return terms.length * 10 + 20;
 }
 function searchProducts(products, query){
   const q = String(query||'').trim();
