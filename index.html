@@ -285,44 +285,60 @@
   .muted{color:var(--ink-faint);}
   .num{font-variant-numeric:tabular-nums;}
   .strong{font-weight:700;}
-  .products-controls{display:grid; grid-template-columns:minmax(260px,1.45fr) auto auto; align-items:center; gap:16px; margin-bottom:18px;}
-  .products-controls .search{height:46px;}
-  .catalog-count{justify-self:end; min-width:162px; height:38px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:9px; color:var(--green-700); font-size:12px; font-weight:800; background:var(--surface);}
-  .catalog-actions{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; margin-bottom:20px;}
-  .catalog-action{min-height:68px; justify-content:center; background:var(--surface); border-color:var(--line); color:var(--ink); font-size:12.5px; padding:10px 12px;}
-  .catalog-action.primary{background:var(--green-600); border-color:var(--green-600); color:#fff;}
-  .catalog-filters{display:grid; grid-template-columns:auto minmax(180px,252px) 1px auto minmax(180px,252px) 1fr; align-items:center; gap:12px; padding:6px 0 20px;}
-  .catalog-filters label{font-size:12px; font-weight:800; color:var(--ink-soft);}
-  .catalog-filters select{height:46px; background:var(--surface);}
-  .catalog-filter-divider{width:1px; height:28px; background:var(--line); margin:0 12px;}
-  .catalog-filter-note{justify-self:end; color:var(--ink-faint); font-size:12px; font-weight:600;}
+  .products-controls{margin-bottom:16px;}
+  .products-controls .search{height:58px; position:relative;}
+  .products-controls .search svg{position:absolute; left:18px; top:50%; transform:translateY(-50%); color:var(--green-700); width:22px; height:22px;}
+  .products-controls .search input{width:100%; height:100%; border-radius:12px; padding:0 20px 0 52px; font-size:15px; border-color:#cfdcd3; box-shadow:0 2px 8px rgba(15,43,30,.03);}
+  .catalog-actions{display:grid; grid-template-columns:repeat(3,minmax(150px,210px)) minmax(190px,1fr); align-items:stretch; gap:12px; margin-bottom:16px;}
+  .catalog-action{min-height:62px; justify-content:center; background:var(--surface); border-color:var(--green-500); color:var(--green-700); font-size:13px; padding:10px 14px;}
+  .catalog-action.primary{justify-self:end; min-width:220px; background:var(--green-600); border-color:var(--green-600); color:#fff;}
+  .catalog-filter-box{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:18px 20px 20px; margin-bottom:18px; box-shadow:0 2px 8px rgba(15,43,30,.025);}
+  .catalog-filter-box h2{font-size:16px; margin:0 0 14px;}
+  .catalog-filters{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px;}
+  .catalog-filter-field{min-width:0;}
+  .catalog-filters label{font-size:12px; font-weight:800; color:var(--ink-soft); display:block; margin-bottom:7px;}
+  .catalog-filters select{width:100%; height:46px; background:var(--surface);}
+  .catalog-filter-note{display:flex; align-items:center; justify-content:flex-end; min-height:24px; color:var(--ink-faint); font-size:12px; font-weight:600; margin-top:11px;}
+  .catalog-filter-footer{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px;}
+  .catalog-filter-footer .chip-row{gap:6px;}
+  .catalog-filter-footer .chip{padding:5px 10px; font-size:11px;}
+  .catalog-utility-actions{display:flex; align-items:center; gap:7px; flex-wrap:wrap; justify-content:flex-end;}
   .product-catalog{display:grid; gap:12px;}
-  .product-group-card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px; display:grid; grid-template-columns:30px 126px minmax(230px,1.35fr) minmax(290px,1fr) 28px; column-gap:14px; align-items:start; box-shadow:0 2px 8px rgba(15,43,30,.025);}
-  .product-group-check{padding-top:22px;}
+  .product-group-card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:10px 14px; display:grid; grid-template-columns:26px 92px minmax(230px,1.35fr) minmax(290px,1fr) 32px; column-gap:12px; align-items:start; box-shadow:0 2px 8px rgba(15,43,30,.025);}
+  .product-group-check{padding-top:12px;}
   .product-group-check input{width:19px; height:19px; accent-color:var(--green-600); cursor:pointer;}
-  .product-group-image{width:126px; min-height:118px; border-radius:12px; background:var(--green-50); display:flex; align-items:center; justify-content:center; overflow:hidden;}
-  .product-group-image .thumb-img{width:100px!important; height:100px!important; border:0; border-radius:10px;}
-  .product-group-info{min-width:0; padding:4px 0;}
-  .product-sku{display:inline-flex; color:var(--green-700); background:var(--green-50); padding:3px 6px; border-radius:4px; font-size:9.5px; line-height:1; font-weight:800; letter-spacing:.03em; margin-bottom:5px;}
-  .product-sku-value{display:block; font-size:14px; font-weight:800; margin-bottom:12px;}
-  .product-group-title{font-size:16px; line-height:1.24; color:var(--ink); font-weight:800; margin:0 0 5px;}
-  .product-group-sub{font-size:12px; color:var(--ink-faint); line-height:1.45; margin-bottom:8px;}
+  .product-group-image{width:92px; min-height:84px; border-radius:10px; background:var(--green-50); display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  .product-group-image .thumb-img{width:70px!important; height:70px!important; border:0; border-radius:9px;}
+  .product-group-info{min-width:0; padding:2px 0;}
+  .product-group-title{font-size:18px; line-height:1.24; color:var(--ink); font-weight:800; margin:0 0 7px; text-transform:uppercase;}
+  .product-name-edit{display:block; width:100%; max-width:650px; margin:0 0 3px; padding:1px 3px; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--ink); font:inherit; font-size:15px; line-height:1.16; font-weight:800; text-transform:uppercase;}
+  .product-name-edit:hover{border-color:var(--line); background:var(--green-50);}
+  .product-name-edit:focus{border-color:var(--green-500); background:#fff; box-shadow:0 0 0 3px var(--green-100);}
+  .product-group-sub{font-size:11px; color:var(--ink-faint); line-height:1.25; margin-bottom:3px;}
   .product-group-sub .cat-chip{margin-left:7px; vertical-align:middle;}
-  .product-presentations{grid-column:3 / 5; padding-top:8px; min-width:0;}
-  .presentation-label{font-size:11.5px; color:var(--ink-soft); font-weight:800; margin-bottom:7px;}
-  .presentation-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(138px,1fr)); gap:8px;}
-  .presentation-card{position:relative; min-height:71px; border:1px solid var(--line); border-radius:9px; background:var(--surface); padding:9px 8px; text-align:center; cursor:pointer; color:var(--ink); font:inherit; line-height:1.15; transition:.16s ease;}
-  .presentation-card:hover{border-color:var(--green-500); background:var(--green-50); transform:translateY(-1px);}
-  .presentation-card.principal{border:2px solid var(--green-500); padding:8px 7px;}
-  .presentation-primary{position:absolute; top:-10px; right:8px; color:#fff; background:var(--green-600); border-radius:999px; padding:2px 7px; font-size:9px; line-height:1.2; font-weight:800;}
-  .presentation-name{display:block; color:var(--ink-soft); font-size:10.5px; font-weight:700; margin-bottom:4px;}
+  .product-presentations{grid-column:3 / 5; padding-top:4px; min-width:0;}
+  .presentation-label{font-size:10.5px; color:var(--ink-soft); font-weight:800; margin-bottom:4px;}
+  .presentation-grid{display:grid; grid-template-columns:repeat(var(--presentation-count,1),minmax(0,1fr)); gap:8px; width:100%;}
+  .presentation-card{position:relative; min-height:68px; display:grid; grid-template-columns:minmax(58px,.7fr) minmax(104px,1.2fr) minmax(72px,.7fr); align-items:center; gap:0; border:1px solid #9bcfb0; border-radius:8px; background:linear-gradient(135deg,#effaf3,#dff3e7); box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(20,108,67,.08); padding:7px 10px; text-align:center; color:var(--ink); font:inherit; line-height:1; transition:.16s ease;}
+  .presentation-card:hover{border-color:var(--green-600); background:linear-gradient(135deg,#e8f8ee,#d3eedf); transform:translateY(-1px);}
+  .presentation-card.principal{border:2px solid var(--green-500); background:linear-gradient(135deg,#e6f8ed,#cfeeda); padding:6px 9px;}
+  .presentation-primary{position:absolute; top:-8px; right:7px; color:#fff; background:var(--green-600); border-radius:999px; padding:1px 6px; font-size:8px; line-height:1.2; font-weight:800;}
+  .presentation-kind{display:flex; flex-direction:column; justify-content:center; min-width:0; padding:0 8px 0 2px;}
+  .presentation-name{display:block; color:var(--ink-soft); font-size:10px; font-weight:800; line-height:1.2;}
   .presentation-price{display:block; font-size:13.5px; font-weight:900;}
   .presentation-stock{display:block; margin-top:4px; color:var(--ink-faint); font-size:10.5px;}
-  .product-group-metrics{display:grid; grid-template-columns:repeat(3,minmax(76px,1fr)); gap:0; min-width:0; padding:5px 0 10px;}
-  .product-metric{min-height:47px; padding:0 13px; border-left:1px solid var(--line);}
+  .presentation-data{display:flex; flex-direction:column; justify-content:center; min-width:0; min-height:38px; padding:0 10px; border-left:1px solid rgba(20,108,67,.17);}
+  .presentation-field-label{display:block; margin:0 0 4px; color:var(--ink-faint); font-size:8.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em;}
+  .presentation-edit{display:block; width:100%; min-width:0; border:1px solid transparent; border-radius:5px; background:transparent; color:inherit; font:inherit; text-align:center; outline:none;}
+  .presentation-edit:hover{background:rgba(255,255,255,.68); border-color:#abd5ba;}
+  .presentation-edit:focus{background:#fff; border-color:var(--green-500); box-shadow:0 0 0 3px var(--green-100);}
+  .presentation-edit.price{font-size:14px; font-weight:900; margin:0;}
+  .presentation-edit.stock{font-size:12px; font-weight:800; color:var(--ink-soft);}
+  .product-group-metrics{display:grid; grid-template-columns:repeat(3,minmax(76px,1fr)); gap:0; min-width:0; padding:3px 0 6px;}
+  .product-metric{min-height:38px; padding:0 11px; border-left:1px solid var(--line);}
   .product-metric:first-child{border-left:0; padding-left:0;}
-  .product-metric-label{display:block; color:var(--ink-faint); font-size:10px; line-height:1.2; margin-bottom:6px;}
-  .product-metric-value{display:block; color:var(--ink); font-size:14px; font-weight:900; white-space:nowrap;}
+  .product-metric-label{display:block; color:var(--ink-faint); font-size:9.5px; line-height:1.1; margin-bottom:4px;}
+  .product-metric-value{display:block; color:var(--ink); font-size:13px; font-weight:900; white-space:nowrap;}
   .product-metric-value.green{color:var(--green-600);}
   .catalog-more{margin-top:6px; color:var(--ink-soft); font-size:21px; line-height:1; padding:2px;}
   .catalog-pagination{display:flex; justify-content:space-between; align-items:center; gap:14px; padding:18px 2px 2px; color:var(--ink-soft); font-size:12px;}
@@ -338,13 +354,13 @@
     .products-controls{grid-template-columns:1fr; gap:10px;}
     .catalog-count{justify-self:start;}
     .catalog-actions{grid-template-columns:repeat(3,minmax(0,1fr));}
-    .catalog-filters{grid-template-columns:auto minmax(170px,1fr) auto minmax(170px,1fr);}
-    .catalog-filter-divider,.catalog-filter-note{display:none;}
+    .catalog-filters{grid-template-columns:repeat(3,minmax(0,1fr));}
     .product-group-card{grid-template-columns:30px 108px minmax(0,1fr);}
     .product-group-image{width:108px; min-height:106px;}
     .product-group-image .thumb-img{width:84px!important; height:84px!important;}
     .product-group-metrics{grid-column:3; grid-row:1; margin-left:auto; width:100%; margin-top:62px;}
     .product-presentations{grid-column:3;}
+    .presentation-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
     .catalog-more{grid-column:3; grid-row:1; justify-self:end;}
   }
   @media(max-width:620px){
@@ -386,8 +402,10 @@
     .toast{width:100%; padding:11px 13px; font-size:12.5px;}
     .catalog-actions{grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;}
     .catalog-action{min-height:58px; font-size:11.5px; padding:8px;}
-    .catalog-filters{grid-template-columns:1fr; gap:7px; padding-bottom:14px;}
+    .catalog-filters{grid-template-columns:1fr; gap:7px; padding-bottom:0;}
     .catalog-filters select{height:42px;}
+    .catalog-filter-footer{align-items:flex-start; flex-direction:column;}
+    .catalog-utility-actions{justify-content:flex-start;}
     .product-group-card{grid-template-columns:26px 76px minmax(0,1fr); padding:12px 10px; column-gap:9px;}
     .product-group-check{padding-top:10px;}
     .product-group-image{width:76px; min-height:76px;}
@@ -400,7 +418,7 @@
     .product-metric:first-child{padding-left:0;}
     .product-metric-value{font-size:12px;}
     .product-presentations{grid-column:1 / 4; padding-top:10px;}
-    .presentation-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .presentation-grid{grid-template-columns:1fr;}
     .catalog-more{grid-column:3; grid-row:1;}
     .catalog-pagination{align-items:flex-start; flex-direction:column;}
   }
@@ -561,7 +579,7 @@ let syncQueue = [];
 let syncState = { online:navigator.onLine, syncing:false, cloudAlive:false };
 
 // El orden inicial sigue la columna Código de la planilla maestra DISTRI INHALA.
-const pf = { search:'', category:'all', brand:'all', status:'all', sortKey:'sku', sortDir:'asc', page:1, pageSize:50 };
+const pf = { search:'', category:'all', brand:'all', provider:'all', status:'all', sortKey:'sku', sortDir:'asc', page:1, pageSize:50 };
 const hf = { from:'', to:'', product:'', method:'all', period:'day' };
 let clientSearch = '';
 let posSearch = '';
@@ -1085,6 +1103,10 @@ function getBrands(){
   return Array.from(new Set(PRODUCTS.map(p=>p.brand||'Sin marca'))).sort();
 }
 
+function getProviders(){
+  return Array.from(new Set(PRODUCTS.map(p=>p.provider||'Sin proveedor'))).sort();
+}
+
 // Búsqueda tolerante: ignora acentos, plural/singular y nombres comerciales parecidos.
 // Ej.: "brava", "barra" o "barritas brava" encuentra "Barra Brava".
 function normalizeSearchText(value){
@@ -1134,6 +1156,7 @@ function filteredProducts(){
   }
   if(pf.category!=='all') list = list.filter(p=>p.category===pf.category);
   if(pf.brand!=='all') list = list.filter(p=>(p.brand||'Sin marca')===pf.brand);
+  if(pf.provider!=='all') list = list.filter(p=>(p.provider||'Sin proveedor')===pf.provider);
   if(pf.status==='low') list = list.filter(p=>p.stock>0 && p.stock<=p.minStock);
   if(pf.status==='out') list = list.filter(p=>p.stock<=0);
   if(pf.status==='ok') list = list.filter(p=>p.stock>p.minStock);
@@ -1174,6 +1197,7 @@ function renderProductos(){
   const el = $('#view-productos');
   const cats = getCategories();
   const brands = getBrands();
+  const providers = getProviders();
   const allProducts = filteredProducts();
   const all = groupedProducts(allProducts);
   const totalPages = Math.max(1, Math.ceil(all.length/pf.pageSize));
@@ -1184,38 +1208,45 @@ function renderProductos(){
 
   el.innerHTML = `
     <div class="products-controls">
-      <div class="search">${ICONS.search}<input id="pSearch" placeholder="Buscar: barra, brava, marca, SKU…" value="${esc(pf.search)}"></div>
-      <div class="chip-row">
-        <button class="chip ${pf.status==='all'?'active':''}" data-status="all">Todos</button>
-        <button class="chip ${pf.status==='low'?'active':''}" data-status="low">Stock bajo</button>
-        <button class="chip ${pf.status==='out'?'active':''}" data-status="out">Agotados</button>
-        <button class="chip ${pf.status==='ok'?'active':''}" data-status="ok">OK</button>
-      </div>
-      <span class="catalog-count">${fmtInt(all.length)} producto${all.length===1?'':'s'} <span style="color:var(--ink-faint); margin-left:5px;">⌄</span></span>
+      <div class="search">${ICONS.search}<input id="pSearch" placeholder="Buscar productos" value="${esc(pf.search)}" aria-label="Buscar productos"></div>
     </div>
 
     <div class="catalog-actions">
       <button class="btn catalog-action" id="btnImportInventory">${ICONS.upload} Importar inventario</button>
       <button class="btn catalog-action" id="btnExportInventory">${ICONS.download} Exportar inventario</button>
-      <button class="btn catalog-action" id="btnImportPrices">${ICONS.upload} Importar precios</button>
-      <button class="btn catalog-action" id="btnBulkPrice">${ICONS.layers} Ajustar precios<br>por lote</button>
       <button class="btn catalog-action" id="btnBulkEdit">${ICONS.edit} Editar en lote</button>
       <button class="btn catalog-action primary" id="btnNewProduct">${ICONS.plus} Nuevo producto</button>
     </div>
 
-    <div class="catalog-filters">
-      <label for="pCategoryFilter">Categoría</label>
-      <select id="pCategoryFilter">
-        <option value="all">Todas las categorías</option>
-        ${cats.map(c=>`<option value="${esc(c)}" ${pf.category===c?'selected':''}>${esc(c)} (${fmtInt(PRODUCTS.filter(p=>p.category===c).length)})</option>`).join('')}
-      </select>
-      <span class="catalog-filter-divider"></span>
-      <label for="pBrandFilter">Marca</label>
-      <select id="pBrandFilter">
-        <option value="all">Todas las marcas</option>
-        ${brands.map(b=>`<option value="${esc(b)}" ${pf.brand===b?'selected':''}>${esc(b)} (${fmtInt(PRODUCTS.filter(p=>(p.brand||'Sin marca')===b).length)})</option>`).join('')}
-      </select>
-      <span class="catalog-filter-note">${pf.category!=='all'||pf.brand!=='all'?`<button class="btn ghost sm" id="pClearFilters">Limpiar filtros</button>`:'Vista agrupada por producto'}</span>
+    <div class="catalog-filter-box">
+      <h2>Filtros</h2>
+      <div class="catalog-filters">
+        <div class="catalog-filter-field"><label for="pCategoryFilter">Categoría</label><select id="pCategoryFilter">
+          <option value="all">Todas las categorías</option>
+          ${cats.map(c=>`<option value="${esc(c)}" ${pf.category===c?'selected':''}>${esc(c)} (${fmtInt(PRODUCTS.filter(p=>p.category===c).length)})</option>`).join('')}
+        </select></div>
+        <div class="catalog-filter-field"><label for="pBrandFilter">Marca</label><select id="pBrandFilter">
+          <option value="all">Todas las marcas</option>
+          ${brands.map(b=>`<option value="${esc(b)}" ${pf.brand===b?'selected':''}>${esc(b)} (${fmtInt(PRODUCTS.filter(p=>(p.brand||'Sin marca')===b).length)})</option>`).join('')}
+        </select></div>
+        <div class="catalog-filter-field"><label for="pProviderFilter">Proveedor</label><select id="pProviderFilter">
+          <option value="all">Todos los proveedores</option>
+          ${providers.map(p=>`<option value="${esc(p)}" ${pf.provider===p?'selected':''}>${esc(p)} (${fmtInt(PRODUCTS.filter(x=>(x.provider||'Sin proveedor')===p).length)})</option>`).join('')}
+        </select></div>
+      </div>
+      <div class="catalog-filter-footer">
+        <div class="chip-row">
+          <button class="chip ${pf.status==='all'?'active':''}" data-status="all">Todos</button>
+          <button class="chip ${pf.status==='low'?'active':''}" data-status="low">Stock bajo</button>
+          <button class="chip ${pf.status==='out'?'active':''}" data-status="out">Agotados</button>
+          <button class="chip ${pf.status==='ok'?'active':''}" data-status="ok">OK</button>
+        </div>
+        <div class="catalog-utility-actions">
+          <button class="btn secondary sm" id="btnImportPrices">${ICONS.upload} Importar precios</button>
+          <button class="btn secondary sm" id="btnBulkPrice">${ICONS.layers} Ajustar precios</button>
+          <span class="catalog-filter-note">${pf.category!=='all'||pf.brand!=='all'||pf.provider!=='all'?`<button class="btn ghost sm" id="pClearFilters">Limpiar filtros</button>`:`${fmtInt(all.length)} producto${all.length===1?'':'s'} · Vista agrupada`}</span>
+        </div>
+      </div>
     </div>
 
     ${selectedSkus.size>0 ? `
@@ -1248,18 +1279,17 @@ function renderProductos(){
     const avgCost=costs.length?costs.reduce((sum,item)=>sum+Number(item.cost),0)/costs.length:0;
     const margins=group.items.filter(item=>Number(item.cost)>0&&Number(item.price)>0).map(item=>(item.price-item.cost)/item.price*100);
     const margin=margins.length?margins.reduce((sum,item)=>sum+item,0)/margins.length:null;
-    const presentationHtml=group.items.map((item,index)=>`<button class="presentation-card ${index===0?'principal':''}" data-edit="${esc(item.sku)}" title="Editar ${esc(item.presentation.label)}">
+    const presentationHtml=group.items.map((item,index)=>`<div class="presentation-card ${index===0?'principal':''}">
       ${index===0?'<span class="presentation-primary">Principal</span>':''}
-      <span class="presentation-name">${item.presentation.pack===1?'1u':`${item.presentation.pack}u`}${item.soldByWeight?' · por kg':''}</span>
-      <span class="presentation-price">${fmt(item.price)}</span>
-      <span class="presentation-stock">Stock: ${item.soldByWeight?formatWeightKg(item.stock):fmtInt(item.stock)}</span>
-    </button>`).join('');
+      <div class="presentation-kind"><span class="presentation-name">${item.presentation.pack===1?'1u':`${item.presentation.pack}u`}${item.soldByWeight?' · por kg':''}</span></div>
+      <div class="presentation-data"><span class="presentation-field-label">Precio</span><input class="presentation-edit price" data-quick-field="price" data-sku="${esc(item.sku)}" type="text" inputmode="decimal" value="${fmt(item.price)}" aria-label="Precio de ${esc(item.presentation.label)}"></div>
+      <div class="presentation-data"><span class="presentation-field-label">Stock</span><input class="presentation-edit stock" data-quick-field="stock" data-sku="${esc(item.sku)}" type="number" min="0" step="${item.soldByWeight?'0.001':'1'}" value="${Number(item.stock)||0}" aria-label="Stock de ${esc(item.presentation.label)}"></div>
+    </div>`).join('');
     return `<article class="product-group-card">
       <div class="product-group-check"><input type="checkbox" class="group-select" data-group-skus="${esc(skus)}" ${allSelected?'checked':''} title="Seleccionar presentaciones"></div>
       <div class="product-group-image">${productThumb(p,100)}</div>
       <div class="product-group-info">
-        <span class="product-sku">SKU</span><span class="product-sku-value">${esc(p.sku)}</span>
-        <h3 class="product-group-title">${esc(group.baseName)}</h3>
+        <input class="product-name-edit" data-group-name="${esc(skus)}" value="${esc(group.baseName)}" aria-label="Nombre del producto">
         <div class="product-group-sub">${esc(p.brand||'Sin marca')} · ${esc(p.provider||'Sin proveedor')} ${categoryChip(p.category)}</div>
       </div>
       <div class="product-group-metrics">
@@ -1267,8 +1297,8 @@ function renderProductos(){
         <div class="product-metric"><span class="product-metric-label">Costo promedio</span><span class="product-metric-value">${avgCost?fmt(avgCost):'—'}</span></div>
         <div class="product-metric"><span class="product-metric-label">Margen promedio</span><span class="product-metric-value green">${margin===null?'—':`${margin.toFixed(0)}%`}</span></div>
       </div>
-      <button class="icon-btn catalog-more" data-edit="${esc(p.sku)}" title="Editar producto">⋮</button>
-      <div class="product-presentations"><div class="presentation-label">Presentaciones · ${group.items.length}</div><div class="presentation-grid">${presentationHtml}</div></div>
+      <button class="icon-btn catalog-more" data-product-menu="${esc(skus)}" title="Acciones del producto">⋮</button>
+      <div class="product-presentations"><div class="presentation-label">Presentaciones · ${group.items.length}</div><div class="presentation-grid" style="--presentation-count:${Math.min(group.items.length,4)}">${presentationHtml}</div></div>
     </article>`;
   }
 
@@ -1276,7 +1306,8 @@ function renderProductos(){
   $all('[data-status]').forEach(b => b.onclick = () => { pf.status = b.dataset.status; pf.page=1; renderProductos(); });
   $('#pCategoryFilter').onchange = e => { pf.category = e.target.value; pf.page=1; renderProductos(); };
   $('#pBrandFilter').onchange = e => { pf.brand = e.target.value; pf.page=1; renderProductos(); };
-  if($('#pClearFilters')) $('#pClearFilters').onclick = () => { pf.category='all'; pf.brand='all'; pf.page=1; renderProductos(); };
+  $('#pProviderFilter').onchange = e => { pf.provider = e.target.value; pf.page=1; renderProductos(); };
+  if($('#pClearFilters')) $('#pClearFilters').onclick = () => { pf.category='all'; pf.brand='all'; pf.provider='all'; pf.page=1; renderProductos(); };
   $('#btnNewProduct').onclick = () => openProductModal(null);
   $('#btnImportInventory').onclick = openInventoryImportModal;
   $('#btnExportInventory').onclick = exportInventory;
@@ -1289,6 +1320,9 @@ function renderProductos(){
   $('#pPrev').onclick = () => { pf.page--; renderProductos(); };
   $('#pNext').onclick = () => { pf.page++; renderProductos(); };
   $all('[data-edit]').forEach(b => b.onclick = () => openProductModal(b.dataset.edit));
+  $all('[data-quick-field]').forEach(input => input.onchange = () => saveQuickProductField(input));
+  $all('[data-group-name]').forEach(input => input.onchange = () => saveQuickGroupName(input));
+  $all('[data-product-menu]').forEach(button => button.onclick = () => openProductActions(button.dataset.productMenu));
   $('#selectAllPage').onchange = e => {
     if(e.target.checked) pageSkus.forEach(s=>selectedSkus.add(s));
     else pageSkus.forEach(s=>selectedSkus.delete(s));
@@ -1299,6 +1333,76 @@ function renderProductos(){
     if(cb.checked) skus.forEach(sku=>selectedSkus.add(sku)); else skus.forEach(sku=>selectedSkus.delete(sku));
     renderProductos();
   });
+}
+
+async function saveQuickProductField(input){
+  const product=PRODUCTS.find(p=>p.sku===input.dataset.sku);
+  if(!product) return;
+  const field=input.dataset.quickField;
+  let value=field==='price' ? Math.max(0, moneyValue(input.value)||0) : Math.max(0, Number(input.value)||0);
+  if(field==='stock') value=product.soldByWeight ? Math.round(value*1000)/1000 : Math.round(value);
+  if(Number(product[field])===value) return;
+  product[field]=value;
+  await persistProducts();
+  toast(field==='price'?'Precio actualizado':'Stock actualizado');
+  renderProductos();
+  if(VIEW==='dashboard') renderDashboard();
+}
+
+async function saveQuickGroupName(input){
+  const baseName=input.value.trim();
+  const skus=input.dataset.groupName.split(',').filter(Boolean);
+  const items=PRODUCTS.filter(p=>skus.includes(p.sku));
+  if(!baseName || !items.length){ renderProductos(); return; }
+  const unchanged=items.every(item=>productPresentation(item).baseName===baseName);
+  if(unchanged) return;
+  items.forEach(item=>{
+    const presentation=productPresentation(item);
+    item.name=baseName+(presentation.pack>1?` x${presentation.pack}`:'');
+  });
+  await persistProducts();
+  toast('Nombre actualizado');
+  renderProductos();
+  if(VIEW==='dashboard') renderDashboard();
+}
+
+function openProductActions(skusText){
+  const skus=skusText.split(',').filter(Boolean);
+  const items=PRODUCTS.filter(p=>skus.includes(p.sku));
+  if(!items.length) return;
+  const plural=items.length>1;
+  showModal(`
+    <div class="modal-head"><h3>Acciones del producto</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
+    <div class="modal-body">
+      <div class="strong">${esc(productPresentation(items[0]).baseName)}</div>
+      <div class="hint">${plural?`${fmtInt(items.length)} presentaciones agrupadas.`:'Una presentación.'}</div>
+      <button class="btn secondary" id="actionEditProduct">${ICONS.edit} Editar detalles completos</button>
+      <button class="btn danger" id="actionDeleteProduct">${ICONS.trash} Eliminar ${plural?'producto y presentaciones':'producto'}</button>
+    </div>
+  `);
+  $('#actionEditProduct').onclick=()=>openProductModal(items[0].sku);
+  $('#actionDeleteProduct').onclick=()=>confirmDeleteProductGroup(skus);
+}
+
+function confirmDeleteProductGroup(skus){
+  const items=PRODUCTS.filter(p=>skus.includes(p.sku));
+  if(!items.length) return;
+  const baseName=productPresentation(items[0]).baseName;
+  const plural=items.length>1;
+  showModal(`
+    <div class="modal-head"><h3>Eliminar producto</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
+    <div class="modal-body"><p style="margin:0; font-size:13.5px; line-height:1.5;">Se eliminará <b>${esc(baseName)}</b>${plural?` y sus ${fmtInt(items.length)} presentaciones`:''}. Esta acción no se puede deshacer.</p></div>
+    <div class="modal-foot"><button class="btn secondary" data-close>Cancelar</button><button class="btn danger" id="confirmGroupDelete">${ICONS.trash} Eliminar</button></div>
+  `);
+  $('#confirmGroupDelete').onclick=async()=>{
+    PRODUCTS=PRODUCTS.filter(p=>!skus.includes(p.sku));
+    skus.forEach(sku=>selectedSkus.delete(sku));
+    await persistProducts();
+    closeModal();
+    toast(plural?'Producto y presentaciones eliminados':'Producto eliminado');
+    renderProductos();
+    if(VIEW==='dashboard') renderDashboard();
+  };
 }
 
 function startInlineEdit(td){
