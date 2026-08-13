@@ -1759,10 +1759,16 @@ function rowsToInventoryChanges(rows){
   const updates=[], creates=[], ignored=[];
   const takenSkus=new Set(PRODUCTS.map(p=>normalizedText(p.sku)));
   rows.forEach((row,index)=>{
-    const skuRaw=inventoryValue(row,['sku','codigo','código','codigo producto','código de producto','cod producto']);
-    const nameRaw=inventoryValue(row,['producto','nombre','nombre del producto','descripcion','descripción','articulo','artículo']);
+    const skuRaw=inventoryValue(row,['sku','sku variante','codigo','código','codigo producto','código de producto','cod producto']);
+    const nameRaw=inventoryValue(row,['producto','producto principal','nombre','nombre del producto','descripcion','descripción','articulo','artículo']);
     const sku=String(skuRaw||'').trim(), name=String(nameRaw||'').trim();
-    const current=productLookup(sku,true) || productLookup(name,false);
+    const variantRaw=inventoryValue(row,['variante','presentacion','presentación','pack','formato']);
+    const variant=String(variantRaw||'').trim();
+    const isUnitVariant=/^(unidad|por unidad|unitario|x\s*1|1\s*unidad)$/i.test(variant);
+    const displayName=name && variant && !isUnitVariant && !normalizedText(name).includes(normalizedText(variant)) ? `${name} · ${variant}` : name;
+    // Si la fila tiene SKU, ese identificador manda: evita que un pack nuevo
+    // reemplace al producto por unidad cuando ambos comparten nombre base.
+    const current=sku ? productLookup(sku,true) : productLookup(name,false);
     if(!current && !name){ ignored.push(index+2); return; }
     const category=inventoryValue(row,['categoria','categoría']);
     const brand=inventoryValue(row,['marca']);
@@ -1771,9 +1777,9 @@ function rowsToInventoryChanges(rows){
     const unit=inventoryValue(row,['unidad','tipo de venta','forma de venta','se vende por','se vende por peso','a granel por peso (kg)']);
     const item={
       sku:current ? current.sku : sku,
-      name:name || (current&&current.name), category, brand, provider, image,
+      name:displayName || (current&&current.name), category, brand, provider, image,
       cost:stockValue(inventoryValue(row,['precio de costo','costo','costo compra'])),
-      price:stockValue(inventoryValue(row,['precio de venta','venta','precio','precio lista','pvp'])),
+      price:stockValue(inventoryValue(row,['precio de venta','precio pack','venta','precio','precio lista','pvp'])),
       stock:stockValue(inventoryValue(row,['stock','stock disponible','cantidad','existencia'])),
       minStock:stockValue(inventoryValue(row,['stock minimo','stock mínimo','min stock','alerta stock','alerta de stock bajo'])),
       soldByWeight:unit===undefined ? null : /^(kg|kilo|kilogramo|granel|a granel|por peso|a granel,? por peso \(kg\)|si|sí|true|1)$/i.test(String(unit).trim())
@@ -1789,7 +1795,7 @@ function openInventoryImportModal(){
   showModal(`
     <div class="modal-head"><h3>${ICONS.upload} Importar inventario</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
     <div class="modal-body">
-      <div class="hint" style="margin:0 0 14px;">Actualiza todos los datos del producto: imagen, nombre, categoría, marca, proveedor, unidad de venta, costo, precio, stock y alerta de stock bajo. Identifica cada producto por SKU o nombre; los SKU nuevos se agregan. Los campos vacíos no reemplazan datos existentes.</div>
+      <div class="hint" style="margin:0 0 14px;">Actualiza todos los datos del producto: imagen, nombre, categoría, marca, proveedor, unidad de venta, costo, precio, stock y alerta de stock bajo. Identifica cada producto por SKU o nombre; los SKU nuevos se agregan. También acepta archivos con las hojas “Catálogo con variantes”, “Variantes” e “Inventario original”; en ese caso usa “Inventario original” para preservar cada SKU. Los campos vacíos no reemplazan datos existentes.</div>
       <label class="field-label">Archivo de inventario</label>
       <input id="inventorySheetFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="width:100%;">
       <div class="hint" style="margin-top:7px;">Columnas admitidas: SKU, Nombre del producto, Categoría, Marca, Proveedor, Precio de costo, Precio de venta, Stock disponible, Alerta de stock bajo, Unidad o Forma de venta, e Imagen o URL de imagen.</div>
@@ -1830,6 +1836,13 @@ function previewInventoryChanges(result, source){
     await persistProducts(); closeModal(); toast(`Inventario actualizado: ${fmtInt(updates.length)} modificado${updates.length===1?'':'s'} y ${fmtInt(creates.length)} agregado${creates.length===1?'':'s'}`); renderProductos(); if(VIEW==='dashboard') renderDashboard();
   };
 }
+function selectInventorySheet(workbook){
+  const names=workbook.SheetNames || [];
+  const byName=new Map(names.map(name=>[normalizedText(name),name]));
+  const priority=['inventario original','inventario completo','inventario base','inventario','variantes'];
+  for(const wanted of priority){ if(byName.has(wanted)) return byName.get(wanted); }
+  return names[0];
+}
 function importInventorySheet(file){
   const reader=new FileReader();
   reader.onerror=()=>{ const state=$('#inventoryImportState'); if(state){state.style.display='block';state.textContent='No se pudo leer el archivo.';} };
@@ -1837,8 +1850,10 @@ function importInventorySheet(file){
     try{
       if(!window.XLSX) throw new Error('La librería para leer planillas no está disponible. Recargá la aplicación e intentá nuevamente.');
       const workbook=XLSX.read(reader.result,{type:'array'});
-      const rows=XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]],{defval:''});
-      previewInventoryChanges(rowsToInventoryChanges(rows),file.name);
+      const sheetName=selectInventorySheet(workbook);
+      if(!sheetName) throw new Error('El archivo no contiene hojas para importar.');
+      const rows=XLSX.utils.sheet_to_json(workbook.Sheets[sheetName],{defval:''});
+      previewInventoryChanges(rowsToInventoryChanges(rows), `${file.name} · hoja ${sheetName}`);
     }catch(error){ const state=$('#inventoryImportState'); if(state){state.style.display='block';state.style.background='var(--red-bg)';state.style.borderColor='#efc0bb';state.textContent=error.message||'El archivo no tiene un formato válido.';} }
   };
   reader.readAsArrayBuffer(file);
