@@ -1169,20 +1169,28 @@ function filteredProducts(){
   return list;
 }
 
-// Agrupa presentaciones del mismo producto, por ejemplo "Aceite 10 ml x 1u"
-// y "Aceite 10 ml x 12u", sin mezclar sus SKU, precios ni stocks.
+// Agrupa presentaciones aunque el pack esté antes de la marca/proveedor.
+// Ej.: "PASTA X 370 GRS X 30 - ENTRENU(T)S" y "PASTA X 370 GRS X 1U - ENTRENU(T)S".
 function productPresentation(product){
   const name=String(product.name||'').trim();
-  const match=name.match(/(?:\s*[·•\-–]?\s*)x\s*(\d+)\s*(?:u|un(?:idad(?:es)?)?|unid(?:ades)?|pack)?\s*$/i);
+  // Solo toma una cantidad de presentación si termina antes de un separador o el final.
+  // Así "X 370 GRS" queda como parte del producto y "X 30 - Marca" se toma como pack.
+  const pattern=/\s*[x×]\s*(\d+)\s*(?:u(?:n(?:id(?:ad(?:es)?)?)?)?|unidades?|unid(?:ades)?|pack)?(?=\s*(?:[-–—]|$))/gi;
+  let match=null, found;
+  while((found=pattern.exec(name))) match=found;
   if(!match) return {baseName:name, pack:1, label:'Unidad'};
   const pack=Math.max(1,Number(match[1])||1);
-  return {baseName:name.slice(0,match.index).trim(), pack, label:pack===1?'Unidad':`Pack x${pack}`};
+  const baseName=(name.slice(0,match.index)+name.slice(match.index+match[0].length))
+    .replace(/\s{2,}/g,' ').replace(/\s*([-–—])\s*/g,' $1 ').trim();
+  return {baseName, pack, label:pack===1?'Unidad':`Pack x${pack}`};
 }
 function groupedProducts(products){
   const groups=new Map();
   products.forEach(product=>{
     const presentation=productPresentation(product);
-    const key=[normalizedText(presentation.baseName), normalizedText(product.brand||''), normalizedText(product.category||'')].join('|');
+    // La categoría no define una presentación: puede estar mal cargada en uno de los packs.
+    // Marca + nombre base evita unir productos diferentes con el mismo formato.
+    const key=[normalizedText(presentation.baseName), normalizedText(product.brand||'')].join('|');
     if(!groups.has(key)) groups.set(key,{key, baseName:presentation.baseName, items:[]});
     groups.get(key).items.push({...product, presentation});
   });
