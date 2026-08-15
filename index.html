@@ -511,7 +511,7 @@
       const [inventory, sales, clients, settings] = await Promise.all([getDoc(inventoryRef), getDoc(salesRef), getDoc(clientsRef), getDoc(settingsRef)]);
       return { inventoryExists: inventory.exists(), inventory: inventory.exists() ? inventory.data() : null, sales: sales.exists() ? sales.data() : null, clients: clients.exists() ? clients.data() : null, settingsExists: settings.exists(), settings: settings.exists() ? settings.data() : null };
     },
-    saveInventory(products, seq){ return setDoc(inventoryRef, { products, seq, updatedAt: Date.now() }); },
+    saveInventory(products, seq, sheetSyncLog){ return setDoc(inventoryRef, { products, seq, sheetSyncLog, updatedAt: Date.now() }); },
     saveSales(sales){ return setDoc(salesRef, { sales, updatedAt: Date.now() }); },
     saveClients(clients){ return setDoc(clientsRef, { clients, updatedAt: Date.now() }); },
     saveSettings(settings){ return setDoc(settingsRef, { settings, updatedAt: Date.now() }); },
@@ -585,7 +585,8 @@ const SHEET_SYNC = {
   lastVersion: '0',
   pushTimer: null,
   pollingTimer: null,
-  pulling: false
+  pulling: false,
+  history: []
 };
 
 // El orden inicial sigue la columna Código de la planilla maestra DISTRI INHALA.
@@ -790,7 +791,7 @@ async function cloudSave(type, payload){
   if(!CLOUD || !navigator.onLine){ await enqueueSync(type,payload); return false; }
   try{
     syncState.syncing=true; updateSyncIndicator();
-    if(type==='products') await CLOUD.saveInventory(payload.products, payload.seq);
+    if(type==='products') await CLOUD.saveInventory(payload.products, payload.seq, payload.sheetSyncLog || []);
     if(type==='sales') await CLOUD.saveSales(payload);
     if(type==='clients') await CLOUD.saveClients(payload);
     if(type==='settings') await CLOUD.saveSettings(payload);
@@ -810,7 +811,7 @@ async function processSyncQueue(){
     while(syncQueue.length && navigator.onLine){
       const entry=syncQueue[0]; let ok=false;
       try{
-        if(entry.type==='products') await CLOUD.saveInventory(entry.payload.products, entry.payload.seq);
+        if(entry.type==='products') await CLOUD.saveInventory(entry.payload.products, entry.payload.seq, entry.payload.sheetSyncLog || []);
         if(entry.type==='sales') await CLOUD.saveSales(entry.payload);
         if(entry.type==='clients') await CLOUD.saveClients(entry.payload);
         if(entry.type==='settings') await CLOUD.saveSettings(entry.payload);
@@ -836,6 +837,8 @@ async function loadData(){
   const remote = await CLOUD.load();
   if(remote.inventoryExists){
     PRODUCTS = Array.isArray(remote.inventory.products) ? remote.inventory.products : [];
+    SHEET_SYNC.history = Array.isArray(remote.inventory.sheetSyncLog) ? remote.inventory.sheetSyncLog : (await storageGet('inhala_sheet_sync_log') || []);
+    await storageSet('inhala_sheet_sync_log', SHEET_SYNC.history);
     SALES = Array.isArray(remote.sales && remote.sales.sales) ? remote.sales.sales : [];
     CLIENTS = Array.isArray(remote.clients && remote.clients.clients) ? remote.clients.clients : [];
     manualSkuSeq = remote.inventory.seq || 1;
@@ -860,6 +863,7 @@ async function loadData(){
   let seq = await storageGet('inhala_seq');
   APP_SETTINGS = normalizeAppSettings(await storageGet('inhala_settings'));
   PRODUCTS = prods;
+  SHEET_SYNC.history = await storageGet('inhala_sheet_sync_log') || [];
   SALES = sales;
   CLIENTS = clients;
   manualSkuSeq = seq || 1;
@@ -867,13 +871,14 @@ async function loadData(){
   applyAppearance();
   if(migratedWeightProducts) await storageSet('inhala_products', PRODUCTS);
   // Primer respaldo: si la nube no responde, los snapshots locales quedan en cola.
-  await Promise.all([cloudSave('products',{products:PRODUCTS,seq:manualSkuSeq}), cloudSave('sales',SALES), cloudSave('clients',CLIENTS), cloudSave('settings',APP_SETTINGS)]);
+  await Promise.all([cloudSave('products',{products:PRODUCTS,seq:manualSkuSeq,sheetSyncLog:SHEET_SYNC.history}), cloudSave('sales',SALES), cloudSave('clients',CLIENTS), cloudSave('settings',APP_SETTINGS)]);
 }
 async function persistProducts(){
   // Limpia el campo legado de códigos de barras al guardar el inventario.
   PRODUCTS.forEach(product=>{ if(Object.prototype.hasOwnProperty.call(product,'barcode')) delete product.barcode; });
   const localOk=await storageSet('inhala_products', PRODUCTS);
-  const cloudOk=await cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq});
+  await storageSet('inhala_sheet_sync_log', SHEET_SYNC.history);
+  const cloudOk=await cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq, sheetSyncLog:SHEET_SYNC.history});
   if(!localOk && !cloudOk){ toast('No se pudo guardar el inventario ni sincronizarlo. No cierres la aplicación.', true); throw localWriteError('el inventario'); }
   return cloudOk;
 }
@@ -893,50 +898,87 @@ async function sheetRequest(method, body){
   if(!data.ok) throw new Error(data.error || 'La planilla rechazó la actualización.');
   return data;
 }
+function inventorySyncDifference(current, incoming){
+  const oldBySku=new Map(current.map(product=>[product.sku,product]));
+  const newBySku=new Map(incoming.map(product=>[product.sku,product]));
+  let added=0, deleted=0, updated=0;
+  incoming.forEach(product=>{
+    const old=oldBySku.get(product.sku);
+    if(!old){ added++; return; }
+    const fields=['name','category','brand','provider','image','cost','price','stock','minStock','soldByWeight'];
+    if(fields.some(field=>String(old[field]??'')!==String(product[field]??''))) updated++;
+  });
+  current.forEach(product=>{ if(!newBySku.has(product.sku)) deleted++; });
+  return {added,updated,deleted};
+}
 function scheduleSheetPush(){
   clearTimeout(SHEET_SYNC.pushTimer);
-  SHEET_SYNC.pushTimer = setTimeout(pushInventoryToSheet, 1200);
+  // Agrupa cambios consecutivos en una sola escritura y evita enviar snapshots intermedios.
+  SHEET_SYNC.pushTimer=setTimeout(()=>pushInventoryToSheet(false), 1200);
 }
-async function pushInventoryToSheet(){
-  if(!navigator.onLine || SHEET_SYNC.pulling) return;
+async function recordSheetSync(action, counts, note){
+  SHEET_SYNC.history.unshift({
+    id:'S-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), date:new Date().toISOString(), action,
+    added:Number(counts.added)||0, updated:Number(counts.updated)||0, deleted:Number(counts.deleted)||0,
+    note:String(note||'')
+  });
+  SHEET_SYNC.history=SHEET_SYNC.history.slice(0,100);
+  await persistProducts();
+}
+async function pushInventoryToSheet(manual){
+  if(!navigator.onLine || SHEET_SYNC.pulling) { if(manual) toast('No hay conexión para enviar la planilla.', true); return false; }
   try{
     const data = await sheetRequest('POST', {
       action:'replaceInventory', token:SHEET_SYNC.token, products:PRODUCTS
     });
     SHEET_SYNC.lastVersion = String(data.version || Date.now());
     await storageSet('inhala_sheet_version', SHEET_SYNC.lastVersion);
+    if(manual){
+      await recordSheetSync('envío a planilla', {added:0,updated:PRODUCTS.length,deleted:0}, `Se enviaron ${PRODUCTS.length} productos.`);
+      toast('Inventario enviado a la planilla');
+    }
+    return true;
   }catch(error){
     console.warn('sheet backup error', error);
+    if(manual) toast('No se pudo enviar el inventario a la planilla.', true);
+    return false;
   }
 }
-async function pullInventoryFromSheet(){
+async function pullInventoryFromSheet(manual){
   if(!navigator.onLine || SHEET_SYNC.pulling) return;
   try{
     const data = await sheetRequest('GET');
     const version = String(data.version || '0');
-    if(version==='0' || version===SHEET_SYNC.lastVersion || !Array.isArray(data.products)) return;
+    if(version==='0' || version===SHEET_SYNC.lastVersion || !Array.isArray(data.products)){
+      if(manual) toast('La aplicación ya coincide con la última versión de la planilla.');
+      return;
+    }
     SHEET_SYNC.pulling = true;
-    PRODUCTS = data.products.map(product => ({
+    const incoming=data.products.map(product => ({
       sku:String(product.sku||''), name:String(product.name||''), category:String(product.category||''),
       brand:String(product.brand||''), provider:String(product.provider||''), image:String(product.image||''),
       cost:Number(product.cost)||0, price:Number(product.price)||0, stock:Number(product.stock)||0,
       minStock:Number(product.minStock)||0, soldByWeight:product.soldByWeight===true
     })).filter(product=>product.sku && product.name);
-    await persistProducts();
+    const changes=inventorySyncDifference(PRODUCTS,incoming);
+    PRODUCTS = incoming;
     SHEET_SYNC.lastVersion = version;
     await storageSet('inhala_sheet_version', version);
+    await recordSheetSync('importación desde planilla', changes, 'Cambios aplicados desde Google Sheets.');
     if(document.getElementById('app').style.display !== 'none') setView(VIEW);
+    if(manual) toast(`Planilla aplicada: ${changes.added} agregado${changes.added===1?'':'s'}, ${changes.updated} modificado${changes.updated===1?'':'s'} y ${changes.deleted} eliminado${changes.deleted===1?'':'s'}`);
   }catch(error){
     console.warn('sheet pull error', error);
+    if(manual) toast('No se pudo leer la planilla.', true);
   }finally{
     SHEET_SYNC.pulling = false;
   }
 }
 async function startSheetSync(){
   SHEET_SYNC.lastVersion = String(await storageGet('inhala_sheet_version') || '0');
-  // La primera copia procede de Firebase hacia la planilla para no perder las imágenes de la app.
-  await pushInventoryToSheet();
-  SHEET_SYNC.pollingTimer = setInterval(pullInventoryFromSheet, 30000);
+  // Cada versión externa se procesa una sola vez. No se reimporta si no cambió la versión.
+  await pullInventoryFromSheet(false);
+  SHEET_SYNC.pollingTimer=setInterval(()=>pullInventoryFromSheet(false), 10000);
 }
 async function persistSales(){
   const localOk=await storageSet('inhala_sales', SALES);
@@ -952,7 +994,7 @@ async function persistClients(){
 }
 async function persistSeq(){
   const localOk=await storageSet('inhala_seq', manualSkuSeq);
-  const cloudOk=await cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq});
+  const cloudOk=await cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq, sheetSyncLog:SHEET_SYNC.history});
   if(!localOk && !cloudOk){ toast('No se pudo guardar la secuencia ni sincronizarla. No cierres la aplicación.', true); throw localWriteError('la secuencia de productos'); }
   return cloudOk;
 }
@@ -993,7 +1035,10 @@ function startCloudSync(){
   stopCloudSync = CLOUD.subscribe(data => {
     if(!Array.isArray(data.products)) return;
     syncState.cloudAlive=true;
-    if(!syncQueue.some(x=>x.type==='products')) { PRODUCTS = data.products; manualSkuSeq = data.seq || 1; }
+    if(!syncQueue.some(x=>x.type==='products')) {
+      PRODUCTS = data.products; manualSkuSeq = data.seq || 1;
+      if(Array.isArray(data.sheetSyncLog)) { SHEET_SYNC.history=data.sheetSyncLog; storageSet('inhala_sheet_sync_log', SHEET_SYNC.history); }
+    }
     updateSyncIndicator();
     if(document.getElementById('app').style.display !== 'none') setView(VIEW);
   }, data => {
@@ -2026,7 +2071,7 @@ function stockValue(value){
   const number = moneyValue(value); return isNaN(number) ? null : Math.max(0, number);
 }
 function rowsToInventoryChanges(rows){
-  const updates=[], creates=[], ignored=[];
+  const updates=[], creates=[], ignored=[], matchedSkus=new Set();
   const takenSkus=new Set(PRODUCTS.map(p=>normalizedText(p.sku)));
   rows.forEach((row,index)=>{
     const skuRaw=inventoryValue(row,['sku','sku variante','codigo','código','codigo producto','código de producto','cod producto']);
@@ -2054,12 +2099,15 @@ function rowsToInventoryChanges(rows){
       minStock:stockValue(inventoryValue(row,['stock minimo','stock mínimo','min stock','alerta stock','alerta de stock bajo'])),
       soldByWeight:unit===undefined ? null : /^(kg|kilo|kilogramo|granel|a granel|por peso|a granel,? por peso \(kg\)|si|sí|true|1)$/i.test(String(unit).trim())
     };
-    if(current) updates.push(item);
+    if(current){ updates.push(item); matchedSkus.add(current.sku); }
     else if(!sku || takenSkus.has(normalizedText(sku))) ignored.push(index+2);
     else { creates.push(item); takenSkus.add(normalizedText(sku)); }
   });
   const uniqueUpdates=new Map(); updates.forEach(item=>uniqueUpdates.set(item.sku,item));
-  return {updates:[...uniqueUpdates.values()], creates, ignored};
+  // Solo se utiliza si el usuario elige una sincronización exacta. En una importación
+  // común se conservan los productos ausentes, para admitir archivos parciales.
+  const missing=PRODUCTS.filter(product=>!matchedSkus.has(product.sku));
+  return {updates:[...uniqueUpdates.values()], creates, ignored, missing};
 }
 function openInventoryImportModal(){
   showModal(`
@@ -2076,7 +2124,7 @@ function openInventoryImportModal(){
   $('#inventorySheetFile').onchange=e=>{ if(e.target.files[0]) importInventorySheet(e.target.files[0]); };
 }
 function previewInventoryChanges(result, source){
-  const {updates,creates,ignored}=result;
+  const {updates,creates,ignored,missing=[]}=result;
   if(!updates.length && !creates.length){
     const state=$('#inventoryImportState'); if(state){ state.style.display='block'; state.style.background='var(--red-bg)'; state.style.borderColor='#efc0bb'; state.textContent='No se encontraron productos válidos en el archivo.'; } return;
   }
@@ -2088,10 +2136,12 @@ function previewInventoryChanges(result, source){
       <div style="max-height:330px; overflow:auto;"><table><thead><tr><th>Acción</th><th>Producto</th><th>SKU</th><th style="text-align:right;">Stock</th></tr></thead><tbody>
         ${sample.map(({x,type})=>`<tr><td>${type}</td><td class="strong">${esc(x.name)}</td><td class="muted">${esc(x.sku)}</td><td class="num" style="text-align:right;">${x.stock===null?'Sin cambio':x.stock}</td></tr>`).join('')}
       </tbody></table></div>${sample.length<updates.length+creates.length?'<div class="hint" style="margin-top:8px;">Se muestran los primeros 100 productos.</div>':''}
+      ${missing.length?`<label class="hint" style="display:flex; gap:8px; align-items:flex-start; margin-top:14px; padding:10px 12px; border:1px solid #efc0bb; border-radius:8px; color:#8d2e25;"><input id="exactInventorySync" type="checkbox" style="margin-top:2px;"> <span><strong>Sincronizar exactamente con el archivo.</strong> Elimina de la aplicación ${fmtInt(missing.length)} producto${missing.length===1?'':'s'} que no figura${missing.length===1?'':'n'} en esta planilla.</span></label>`:''}
     </div>
     <div class="modal-foot"><button class="btn secondary" data-close>Cancelar</button><button class="btn" id="applyImportedInventory">${ICONS.check} Confirmar importación</button></div>
   `);
   $('#applyImportedInventory').onclick=async()=>{
+    const exactSync=!!($('#exactInventorySync') && $('#exactInventorySync').checked);
     const updateMap=new Map(updates.map(item=>[item.sku,item]));
     PRODUCTS.forEach(p=>{
       const item=updateMap.get(p.sku); if(!item) return;
@@ -2103,7 +2153,9 @@ function previewInventoryChanges(result, source){
       const generatedSku=item.sku || ('M-'+String(manualSkuSeq++).padStart(4,'0'));
       PRODUCTS.push({sku:generatedSku,name:item.name,category:String(item.category||'Sin categoría').trim(),brand:String(item.brand||'').trim(),provider:String(item.provider||'').trim(),image:String(item.image||'').trim(),cost:item.cost===null?0:item.cost,price:item.price===null?0:item.price,stock:item.stock===null?0:item.stock,minStock:item.minStock===null?5:item.minStock,soldByWeight:item.soldByWeight===true});
     });
-    await persistProducts(); closeModal(); toast(`Inventario actualizado: ${fmtInt(updates.length)} modificado${updates.length===1?'':'s'} y ${fmtInt(creates.length)} agregado${creates.length===1?'':'s'}`); renderProductos(); if(VIEW==='dashboard') renderDashboard();
+    const deleted=exactSync ? missing.length : 0;
+    if(exactSync) PRODUCTS=PRODUCTS.filter(product=>!missing.some(item=>item.sku===product.sku));
+    await persistProducts(); closeModal(); toast(`Inventario actualizado: ${fmtInt(updates.length)} modificado${updates.length===1?'':'s'}, ${fmtInt(creates.length)} agregado${creates.length===1?'':'s'}${deleted?` y ${fmtInt(deleted)} eliminado${deleted===1?'':'s'}`:''}`); renderProductos(); if(VIEW==='dashboard') renderDashboard();
   };
 }
 function selectInventorySheet(workbook){
@@ -2328,6 +2380,7 @@ function confirmDeleteClient(id){
 /* ================= CONFIGURACIÓN ================= */
 function renderConfiguracion(){
   const el = $('#view-configuracion');
+  const syncHistory=SHEET_SYNC.history.slice(0,20);
   el.innerHTML = `
     <div class="card" style="padding:22px; margin-bottom:16px;">
       <div class="strong" style="font-size:17px;">Identidad visual</div>
@@ -2348,6 +2401,16 @@ function renderConfiguracion(){
         <input id="logoUrl" type="url" style="width:100%;" placeholder="https://..." value="${esc(APP_SETTINGS.logoUrl)}">
         <div class="settings-preview logo"><img id="logoPreview" src="${esc(APP_SETTINGS.logoUrl)}" alt="Vista previa del logo"></div>
       </section>
+    </div>
+
+    <div class="card" style="padding:22px; margin:16px 0;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div><div class="strong" style="font-size:17px;">Sincronización de inventario</div><div class="hint" style="margin-top:5px;">Los cambios hechos en la aplicación se envían a la planilla después de 1,2 segundos. Los cambios hechos en Google Sheets se detectan cada 10 segundos y cada versión se aplica una sola vez.</div></div>
+        <span class="badge ok">Controlada por versión</span>
+      </div>
+      <div style="margin-top:16px; overflow:auto;">
+        ${syncHistory.length?`<table><thead><tr><th>Fecha y hora</th><th>Origen</th><th style="text-align:right;">Agregados</th><th style="text-align:right;">Modificados</th><th style="text-align:right;">Eliminados</th></tr></thead><tbody>${syncHistory.map(entry=>`<tr><td>${fmtDateTime(entry.date)}</td><td><div class="strong" style="font-size:12px;">${esc(entry.action)}</div>${entry.note?`<div class="muted" style="font-size:11px;">${esc(entry.note)}</div>`:''}</td><td class="num" style="text-align:right;">${fmtInt(entry.added)}</td><td class="num" style="text-align:right;">${fmtInt(entry.updated)}</td><td class="num" style="text-align:right; color:${entry.deleted?'var(--red)':'inherit'};">${fmtInt(entry.deleted)}</td></tr>`).join('')}</tbody></table>`:`<div class="hint">Todavía no se aplicaron cambios desde Google Sheets.</div>`}
+      </div>
     </div>
 
     <div class="card" style="padding:22px; margin:16px 0;">
@@ -3054,7 +3117,7 @@ async function init(){
   updateSyncIndicator();
   processSyncQueue();
 }
-window.addEventListener('online', ()=>{ syncState.online=true; updateSyncIndicator(); processSyncQueue(); pushInventoryToSheet(); pullInventoryFromSheet(); });
+window.addEventListener('online', ()=>{ syncState.online=true; updateSyncIndicator(); pullInventoryFromSheet(false); processSyncQueue(); });
 window.addEventListener('offline', ()=>{ syncState.online=false; updateSyncIndicator(); });
 init();
 
