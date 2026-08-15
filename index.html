@@ -577,6 +577,16 @@ let CLOUD = null;
 let stopCloudSync = null;
 let syncQueue = [];
 let syncState = { online:navigator.onLine, syncing:false, cloudAlive:false };
+// Respaldo bidireccional con la planilla INVENTARIO INHALA.
+// El token coincide con el configurado en el proyecto de Google Apps Script.
+const SHEET_SYNC = {
+  url: 'https://script.google.com/macros/s/AKfycbz0gPzl6ajx53j_ljMcKBFQU418i6QscBzhCVNxblyHHUug8rIV1CEhGUA8ApQDkQ/exec',
+  token: 'inhala_2026_6e3a9f1b8c2d4e7f',
+  lastVersion: '0',
+  pushTimer: null,
+  pollingTimer: null,
+  pulling: false
+};
 
 // El orden inicial sigue la columna Código de la planilla maestra DISTRI INHALA.
 const pf = { search:'', category:'all', brand:'all', provider:'all', status:'all', sortKey:'sku', sortDir:'asc', page:1, pageSize:50 };
@@ -785,6 +795,7 @@ async function cloudSave(type, payload){
     if(type==='clients') await CLOUD.saveClients(payload);
     if(type==='settings') await CLOUD.saveSettings(payload);
     syncState.cloudAlive=true;
+    if(type==='products' && !SHEET_SYNC.pulling) scheduleSheetPush();
     return true;
   }catch(err){
     console.error('cloud sync error', type, err);
@@ -805,7 +816,10 @@ async function processSyncQueue(){
         if(entry.type==='settings') await CLOUD.saveSettings(entry.payload);
         ok=true; syncState.cloudAlive=true;
       }catch(err){ console.error('queue retry error',err); break; }
-      if(ok){ syncQueue.shift(); await saveSyncQueue(); }
+      if(ok){
+        if(entry.type==='products' && !SHEET_SYNC.pulling) scheduleSheetPush();
+        syncQueue.shift(); await saveSyncQueue();
+      }
     }
   }finally{ syncState.syncing=false; updateSyncIndicator(); }
 }
@@ -862,6 +876,67 @@ async function persistProducts(){
   const cloudOk=await cloudSave('products', {products:PRODUCTS, seq:manualSkuSeq});
   if(!localOk && !cloudOk){ toast('No se pudo guardar el inventario ni sincronizarlo. No cierres la aplicación.', true); throw localWriteError('el inventario'); }
   return cloudOk;
+}
+
+/* ---------- Respaldo con Google Sheets ---------- */
+async function sheetRequest(method, body){
+  const url = method==='GET'
+    ? `${SHEET_SYNC.url}?token=${encodeURIComponent(SHEET_SYNC.token)}`
+    : SHEET_SYNC.url;
+  const response = await fetch(url, method==='GET' ? {method:'GET'} : {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(body)
+  });
+  if(!response.ok) throw new Error('No se pudo conectar con la planilla.');
+  const data = await response.json();
+  if(!data.ok) throw new Error(data.error || 'La planilla rechazó la actualización.');
+  return data;
+}
+function scheduleSheetPush(){
+  clearTimeout(SHEET_SYNC.pushTimer);
+  SHEET_SYNC.pushTimer = setTimeout(pushInventoryToSheet, 1200);
+}
+async function pushInventoryToSheet(){
+  if(!navigator.onLine || SHEET_SYNC.pulling) return;
+  try{
+    const data = await sheetRequest('POST', {
+      action:'replaceInventory', token:SHEET_SYNC.token, products:PRODUCTS
+    });
+    SHEET_SYNC.lastVersion = String(data.version || Date.now());
+    await storageSet('inhala_sheet_version', SHEET_SYNC.lastVersion);
+  }catch(error){
+    console.warn('sheet backup error', error);
+  }
+}
+async function pullInventoryFromSheet(){
+  if(!navigator.onLine || SHEET_SYNC.pulling) return;
+  try{
+    const data = await sheetRequest('GET');
+    const version = String(data.version || '0');
+    if(version==='0' || version===SHEET_SYNC.lastVersion || !Array.isArray(data.products)) return;
+    SHEET_SYNC.pulling = true;
+    PRODUCTS = data.products.map(product => ({
+      sku:String(product.sku||''), name:String(product.name||''), category:String(product.category||''),
+      brand:String(product.brand||''), provider:String(product.provider||''), image:String(product.image||''),
+      cost:Number(product.cost)||0, price:Number(product.price)||0, stock:Number(product.stock)||0,
+      minStock:Number(product.minStock)||0, soldByWeight:product.soldByWeight===true
+    })).filter(product=>product.sku && product.name);
+    await persistProducts();
+    SHEET_SYNC.lastVersion = version;
+    await storageSet('inhala_sheet_version', version);
+    if(document.getElementById('app').style.display !== 'none') setView(VIEW);
+  }catch(error){
+    console.warn('sheet pull error', error);
+  }finally{
+    SHEET_SYNC.pulling = false;
+  }
+}
+async function startSheetSync(){
+  SHEET_SYNC.lastVersion = String(await storageGet('inhala_sheet_version') || '0');
+  // La primera copia procede de Firebase hacia la planilla para no perder las imágenes de la app.
+  await pushInventoryToSheet();
+  SHEET_SYNC.pollingTimer = setInterval(pullInventoryFromSheet, 30000);
 }
 async function persistSales(){
   const localOk=await storageSet('inhala_sales', SALES);
@@ -2975,10 +3050,11 @@ async function init(){
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   startCloudSync();
+  await startSheetSync();
   updateSyncIndicator();
   processSyncQueue();
 }
-window.addEventListener('online', ()=>{ syncState.online=true; updateSyncIndicator(); processSyncQueue(); });
+window.addEventListener('online', ()=>{ syncState.online=true; updateSyncIndicator(); processSyncQueue(); pushInventoryToSheet(); pullInventoryFromSheet(); });
 window.addEventListener('offline', ()=>{ syncState.online=false; updateSyncIndicator(); });
 init();
 
