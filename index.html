@@ -262,6 +262,7 @@
   @keyframes slideIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
 
   .loading-screen{position:fixed; inset:0; background:#f8fbfa; display:flex; align-items:center; justify-content:flex-end; flex-direction:column; gap:10px; z-index:500; padding:clamp(24px,6vh,68px); overflow:hidden;}
+  .access-gate{position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(135deg,var(--green-950),var(--green-700)) center/cover no-repeat;isolation:isolate;}.access-gate::before{content:'';position:absolute;inset:0;background:rgba(7,27,18,.5);z-index:-1;}.access-gate-box{width:min(420px,100%);color:#fff;text-align:center;position:relative;}.access-gate h1{margin:0;font-size:30px;}.access-options{display:grid;grid-template-columns:1fr;gap:16px;text-align:left;margin-top:28px;}.access-option{border:1px solid rgba(255,255,255,.18);border-radius:var(--radius);padding:22px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font:inherit;transition:transform .15s,background .15s;}.access-option:hover{transform:translateY(-2px);background:rgba(255,255,255,.17);}.access-option svg{width:28px;height:28px;margin-bottom:14px;}.access-option strong{display:block;font-size:18px;}.access-admin-trigger{position:absolute;top:-10px;right:0;width:28px;height:28px;padding:5px;color:rgba(255,255,255,.28);background:transparent;border:0;cursor:pointer;}.access-admin-trigger:hover{color:rgba(255,255,255,.7);}.access-admin-trigger svg{width:17px;height:17px;}.access-login{max-width:390px;margin:0 auto;text-align:left;background:#fff;color:var(--ink);padding:24px;border-radius:var(--radius);box-shadow:var(--shadow);}.access-login h2{margin:0 0 5px;}.access-login .btn{width:100%;justify-content:center;margin-top:16px;}.client-portal{min-height:100vh;background:var(--bg);}.client-header{background:var(--green-900);color:#fff;padding:18px max(20px,calc((100vw - 1180px)/2));display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:30;}.client-header strong{font-size:18px;}.client-header span{display:block;font-size:12px;color:#d4eadb;margin-top:2px;}.client-main{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
   .loading-cover{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center center; z-index:0;}
   .loading-screen::after{content:''; position:absolute; inset:0; z-index:1; background:linear-gradient(180deg,transparent 70%,rgba(255,255,255,.5)); pointer-events:none;}
   .loading-screen > :not(.loading-cover){position:relative; z-index:2;}
@@ -342,9 +343,22 @@
   .product-metric-value.green{color:var(--green-600);}
   .catalog-more{margin-top:6px; color:var(--ink-soft); font-size:21px; line-height:1; padding:2px;}
   .catalog-pagination{display:flex; justify-content:space-between; align-items:center; gap:14px; padding:18px 2px 2px; color:var(--ink-soft); font-size:12px;}
+  /* Tienda online: catálogo público derivado del inventario privado. */
+  .store-hero{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px;margin-bottom:16px;background:linear-gradient(125deg,var(--green-900),var(--green-700));color:#fff;}
+  .store-hero h2{margin:0;font-size:21px;}.store-hero p{margin:5px 0 0;color:#d9f0e1;font-size:13px;}
+  .store-cart-btn{background:#fff;color:var(--green-800);border:0;white-space:nowrap;}
+  .store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
+  .store-product{overflow:hidden;display:flex;flex-direction:column;}.store-product.out{opacity:.65;filter:grayscale(.15);}
+  .store-product-image{height:170px;background:var(--green-50);display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--line);}
+  .store-product-image .thumb-img{width:132px!important;height:132px!important;border-radius:12px;}
+  .store-product-body{padding:14px;display:flex;flex:1;flex-direction:column;gap:8px;}.store-product-name{font-size:14px;font-weight:800;line-height:1.25;}
+  .store-product-price{font-size:17px;font-weight:900;color:var(--green-700);}.store-product-meta{font-size:12px;color:var(--ink-soft);}
+  .store-product-actions{display:flex;gap:8px;align-items:center;margin-top:auto;padding-top:4px;}.store-product-actions select{width:58px;padding:8px 6px;}
+  .store-cart-lines{display:flex;flex-direction:column;gap:11px;}.store-cart-line{display:grid;grid-template-columns:minmax(0,1fr) auto 28px;gap:8px;align-items:center;padding-bottom:11px;border-bottom:1px solid var(--line);}.store-cart-line:last-child{border-bottom:0;padding-bottom:0;}.store-cart-line .name{font-size:13px;font-weight:700;}.store-cart-total{display:flex;justify-content:space-between;font-size:18px;font-weight:900;padding-top:13px;border-top:1px solid var(--green-100);}
   .catalog-pagination .btns{display:flex; gap:7px;}
   ::-webkit-scrollbar{width:9px; height:9px;}
   ::-webkit-scrollbar-thumb{background:#cfe0d5; border-radius:20px;}
+  .access-admin-trigger{top:-32px;left:50%;right:auto;transform:translateX(-50%);width:26px;height:26px;padding:3px;color:rgba(255,255,255,.78);}.access-admin-trigger:hover{color:#fff;}.access-admin-trigger svg{width:20px;height:20px;display:block;}
   @media(max-width:980px){
     .kpis{grid-template-columns:repeat(2,1fr);}
     .two-col, .pos-grid{grid-template-columns:1fr;}
@@ -362,6 +376,7 @@
     .product-presentations{grid-column:3;}
     .presentation-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
     .catalog-more{grid-column:3; grid-row:1; justify-self:end;}
+    .store-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
   }
   @media(max-width:620px){
     .sidebar{width:58px; flex:0 0 58px; padding:12px 6px;}
@@ -388,6 +403,8 @@
     .cart-columns{display:none;}
     .cart-item{grid-template-columns:minmax(0,1fr) 92px 28px; gap:8px;}
     .cart-unit{display:none;}
+    .store-hero{padding:16px;align-items:flex-start;}.store-hero h2{font-size:18px;}.store-cart-btn{font-size:0;padding:10px;}.store-cart-btn svg{margin:0;}.store-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.store-product-image{height:128px;}.store-product-image .thumb-img{width:98px!important;height:98px!important;}.store-product-body{padding:11px;gap:6px;}.store-product-name{font-size:13px;}.store-product-price{font-size:15px;}.store-product-actions{flex-direction:column;align-items:stretch;}.store-product-actions select{width:100%;}
+    .access-options{grid-template-columns:1fr;}.access-gate h1{font-size:25px;}.client-header{padding:14px;}.client-main{padding:18px 12px 40px;}
     .cart-subtotal{grid-column:2; grid-row:1; font-size:13px;}
     .qty-ctrl{grid-column:2; grid-row:2;}
     .cart-item > .icon-btn{grid-column:3; grid-row:1 / span 2;}
@@ -453,6 +470,7 @@
       <div class="view" id="view-venta"></div>
       <div class="view" id="view-clientes"></div>
       <div class="view" id="view-historial"></div>
+      <div class="view" id="view-tienda"></div>
       <div class="view" id="view-configuracion"></div>
     </div>
   </div>
@@ -463,13 +481,15 @@
 </div>
 
 <div class="toast-wrap" id="toastWrap"></div>
+<div class="access-gate" id="accessGate" style="display:none;"></div>
+<div class="client-portal" id="clientPortal" style="display:none;"></div>
 
 <script>
 
 </script>
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
-  import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
   import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 
   const firebaseConfig = {
@@ -488,39 +508,54 @@
   const salesRef = doc(db, 'inhala_private', 'sales');
   const clientsRef = doc(db, 'inhala_private', 'clients');
   const settingsRef = doc(db, 'inhala_private', 'settings');
+  const catalogRef = doc(db, 'inhala_public', 'catalog');
+  const storefrontRef = doc(db, 'inhala_public', 'storefront');
   let currentUser = null, userResolver = null;
   const userReady = new Promise(resolve => { userResolver = resolve; });
+  const accessMode = new URLSearchParams(window.location.search).get('access');
 
-  onAuthStateChanged(auth, user => {
+  // El área de personal requiere una cuenta Firebase autorizada. Cliente no autentica.
+  if(accessMode==='personal') onAuthStateChanged(auth, user => {
     currentUser = user || null;
     if(currentUser){ userResolver(currentUser); window.dispatchEvent(new Event('inhala-authenticated')); }
-    else{
-      // Acceso libre: se autentica automáticamente de forma anónima, sin pedir mail ni contraseña.
-      window.dispatchEvent(new Event('inhala-auth-required'));
-      signInAnonymously(auth).catch(err => {
-        console.error('No se pudo iniciar sesión anónima', err);
-        window.dispatchEvent(new CustomEvent('inhala-auth-error', { detail: err }));
-      });
-    }
+    else window.dispatchEvent(new Event('inhala-auth-required'));
   });
 
   window.inhalaCloud = {
     async waitForUser(){ return currentUser || userReady; },
     getCurrentUserEmail(){ return currentUser ? (currentUser.email || currentUser.displayName || '') : ''; },
+    signInPersonal(email, password){ return signInWithEmailAndPassword(auth, email, password); },
     async load(){
       const [inventory, sales, clients, settings] = await Promise.all([getDoc(inventoryRef), getDoc(salesRef), getDoc(clientsRef), getDoc(settingsRef)]);
       return { inventoryExists: inventory.exists(), inventory: inventory.exists() ? inventory.data() : null, sales: sales.exists() ? sales.data() : null, clients: clients.exists() ? clients.data() : null, settingsExists: settings.exists(), settings: settings.exists() ? settings.data() : null };
     },
-    saveInventory(products, seq, sheetSyncLog){ return setDoc(inventoryRef, { products, seq, sheetSyncLog, updatedAt: Date.now() }); },
+    async saveCatalog(products){
+      const catalog = (Array.isArray(products) ? products : []).map(product => ({
+        sku: String(product.sku || ''), name: String(product.name || ''), price: Number(product.price) || 0,
+        stock: Number(product.stock) || 0, image: String(product.image || '')
+      })).filter(product => product.sku && product.name);
+      return setDoc(catalogRef, { products: catalog });
+    },
+    saveStorefront(settings){ return setDoc(storefrontRef, { businessName:String(settings.businessName||''), businessPhone:String(settings.businessPhone||''), mpAlias:String(settings.mpAlias||''), coverUrl:String(settings.coverUrl||'') }); },
+    async saveInventory(products, seq, sheetSyncLog){
+      await setDoc(inventoryRef, { products, seq, sheetSyncLog, updatedAt: Date.now() });
+      return this.saveCatalog(products);
+    },
     saveSales(sales){ return setDoc(salesRef, { sales, updatedAt: Date.now() }); },
     saveClients(clients){ return setDoc(clientsRef, { clients, updatedAt: Date.now() }); },
-    saveSettings(settings){ return setDoc(settingsRef, { settings, updatedAt: Date.now() }); },
+    async saveSettings(settings){ await setDoc(settingsRef, { settings, updatedAt: Date.now() }); return this.saveStorefront(settings); },
     subscribe(onInventory, onSales, onClients, onSettings){
       const stopInventory = onSnapshot(inventoryRef, snap => { if(snap.exists()) onInventory(snap.data()); });
       const stopSales = onSnapshot(salesRef, snap => { if(snap.exists()) onSales(snap.data()); });
       const stopClients = onSnapshot(clientsRef, snap => { if(snap.exists()) onClients(snap.data()); });
       const stopSettings = onSnapshot(settingsRef, snap => { if(snap.exists() && onSettings) onSettings(snap.data()); });
       return () => { stopInventory(); stopSales(); stopClients(); stopSettings(); };
+    },
+    subscribeCatalog(onCatalog){
+      return onSnapshot(catalogRef, snap => onCatalog(snap.exists() && Array.isArray(snap.data().products) ? snap.data().products : []));
+    },
+    subscribeStorefront(onStorefront){
+      return onSnapshot(storefrontRef, snap => onStorefront(snap.exists() ? snap.data() : {}));
     }
   };
   window.dispatchEvent(new Event('inhala-cloud-ready'));
@@ -534,6 +569,7 @@
 const ICONS = {
   dashboard: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
   box: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>',
+  store: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18l-1 10H4L3 10Z"/><path d="m5 10 1-6h12l1 6"/><path d="M9 14h6"/></svg>',
   cart: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1.4"/><circle cx="19" cy="21" r="1.4"/><path d="M2.5 3h2l2.6 12.4a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 8H6"/></svg>',
   history: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.13-6.36L3 8"/><path d="M12 7v5l3 3"/></svg>',
   settings: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.3 2.3-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.55v.09h-3.25v-.09a1.7 1.7 0 0 0-1.03-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-2.3-2.3.06-.06A1.7 1.7 0 0 0 6.41 15a1.7 1.7 0 0 0-1.55-1.03h-.09v-3.25h.09a1.7 1.7 0 0 0 1.55-1.03 1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.3-2.3.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.55v-.09h3.25v.09a1.7 1.7 0 0 0 1.03 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.3 2.3-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.55 1.03h.09v3.25h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>',
@@ -564,11 +600,15 @@ const INTERNAL_COVER_URL = document.getElementById('loadingCover').src;
 const DEFAULT_APP_SETTINGS = {
   coverUrl:'', logoUrl:'image(441).png',
   businessName:'Inhala&Co', businessAddress:'', businessPhone:'', businessTaxId:'',
-  ticketWidth:'80', ticketFooter:'¡Gracias por su compra!', ticketSeq:0
+  ticketWidth:'80', ticketFooter:'¡Gracias por su compra!', ticketSeq:0, mpAlias:''
 };
 let APP_SETTINGS = {...DEFAULT_APP_SETTINGS};
 let VIEW = 'dashboard';
 let cart = [];         // {sku,name,price,cost,stock,qty}
+let PUBLIC_CATALOG = [];
+let PUBLIC_STOREFRONT = {businessName:'Inhala&Co', businessPhone:'', mpAlias:'', coverUrl:''};
+let onlineCart = [];   // Carrito exclusivo de Tienda online: {sku,name,price,stock,image,qty}
+let stopCatalogSync = null;
 let saleDraft = { clientId:'', reference:'', note:'' };
 let paymentDraft = [{method:'efectivo', amount:0}];
 let manualSkuSeq = 1;
@@ -673,7 +713,8 @@ function normalizeAppSettings(value){
     businessTaxId:String(value&&value.businessTaxId||'').trim(),
     ticketWidth,
     ticketFooter:String(value&&value.ticketFooter!=null?value.ticketFooter:DEFAULT_APP_SETTINGS.ticketFooter).slice(0,200),
-    ticketSeq
+    ticketSeq,
+    mpAlias:String(value&&value.mpAlias||'').trim().slice(0,120)
   };
 }
 function cssImageUrl(url){ return 'url("'+String(url).replace(/["\\]/g,'')+'")'; }
@@ -1061,6 +1102,24 @@ function startCloudSync(){
     if(VIEW==='configuracion') renderConfiguracion();
   });
 }
+function startCatalogSync(){
+  if(!CLOUD || stopCatalogSync || typeof CLOUD.subscribeCatalog!=='function') return;
+  // El catálogo público tiene su propio listener: no depende de los snapshots privados.
+  stopCatalogSync = CLOUD.subscribeCatalog(catalog => {
+    PUBLIC_CATALOG = Array.isArray(catalog) ? catalog : [];
+    onlineCart = onlineCart.map(item => {
+      const current = PUBLIC_CATALOG.find(product => product.sku===item.sku);
+      return current ? {...item, name:current.name, price:Number(current.price)||0, stock:Number(current.stock)||0, image:current.image||'', qty:Math.min(item.qty, Math.max(0, Number(current.stock)||0))} : null;
+    }).filter(Boolean).filter(item=>item.qty>0);
+    storageSet('inhala_online_cart', onlineCart);
+    if(isClientAccess()) renderClientPortal(); else if(VIEW==='tienda') renderTienda();
+  });
+  if(typeof CLOUD.subscribeStorefront==='function') CLOUD.subscribeStorefront(data=>{
+    PUBLIC_STOREFRONT={businessName:String(data.businessName||'Inhala&Co'),businessPhone:String(data.businessPhone||''),mpAlias:String(data.mpAlias||''),coverUrl:String(data.coverUrl||'')};
+    applyAccessBackground();
+    if(isClientAccess()) renderClientPortal();
+  });
+}
 
 /* ---------- Toast ---------- */
 function toast(msg, isErr){
@@ -1076,6 +1135,7 @@ function toast(msg, isErr){
 const NAV = [
   {id:'dashboard', label:'Dashboard', icon:ICONS.dashboard, title:'Dashboard', sub:'Resumen general del negocio'},
   {id:'productos', label:'Productos', icon:ICONS.box, title:'Productos', sub:'Inventario, stock y precios'},
+  {id:'tienda', label:'Tienda online', icon:ICONS.store, title:'Tienda online', sub:'Catálogo público y pedidos por WhatsApp'},
   {id:'venta', label:'Nueva venta', icon:ICONS.cart, title:'Nueva venta', sub:'Registrar una venta y descontar stock'},
   {id:'clientes', label:'Clientes', icon:ICONS.users, title:'Clientes', sub:'Base de clientes y datos de contacto'},
   {id:'historial', label:'Historial y reportes', icon:ICONS.history, title:'Historial y reportes', sub:'Ventas, filtros y ganancias'},
@@ -1099,10 +1159,68 @@ function setView(id){
   renderNav();
   if(id==='dashboard') renderDashboard();
   if(id==='productos') renderProductos();
+  if(id==='tienda') renderTienda();
   if(id==='venta') renderVenta();
   if(id==='clientes') renderClientes();
   if(id==='historial') renderHistorial();
   if(id==='configuracion') renderConfiguracion();
+}
+
+/* ================= TIENDA ONLINE ================= */
+function onlineCartTotal(){ return onlineCart.reduce((sum,item)=>sum+(Number(item.price)||0)*(Number(item.qty)||0),0); }
+function saveOnlineCart(){ storageSet('inhala_online_cart', onlineCart); }
+function isClientAccess(){ return new URLSearchParams(window.location.search).get('access')==='cliente'; }
+function refreshOnlineStore(){ if(isClientAccess()) renderClientPortal(); else renderTienda(); }
+function addOnlineProduct(sku, qty){
+  const product=PUBLIC_CATALOG.find(item=>item.sku===sku);
+  qty=Math.max(1, Math.floor(Number(qty)||1));
+  if(!product || Number(product.stock)<=0) return;
+  const current=onlineCart.find(item=>item.sku===sku);
+  const next=Math.min(Number(product.stock)||0, (current?current.qty:0)+qty);
+  if(current) Object.assign(current,{name:product.name,price:Number(product.price)||0,stock:Number(product.stock)||0,image:product.image||'',qty:next});
+  else onlineCart.push({sku:product.sku,name:product.name,price:Number(product.price)||0,stock:Number(product.stock)||0,image:product.image||'',qty:next});
+  saveOnlineCart(); toast('Producto agregado al carrito'); refreshOnlineStore();
+}
+function renderTienda(){
+  const el=$('#view-tienda');
+  const count=onlineCart.reduce((sum,item)=>sum+item.qty,0);
+  el.innerHTML=`
+    <div class="card store-hero"><div><h2>Catálogo online</h2><p>Los precios y el stock se actualizan desde el inventario.</p></div><button class="btn store-cart-btn" id="openOnlineCart">${ICONS.cart} Carrito${count?' ('+count+')':''}</button></div>
+    ${PUBLIC_CATALOG.length?`<div class="store-grid">${PUBLIC_CATALOG.map(product=>{
+      const stock=Math.max(0,Number(product.stock)||0), out=stock<=0;
+      return `<article class="card store-product${out?' out':''}"><div class="store-product-image">${productThumb(product,132)}</div><div class="store-product-body"><div class="store-product-name">${esc(product.name)}</div><div class="store-product-price">${fmt(product.price)}</div><div class="store-product-meta">${out?'<span class="badge out">Sin stock</span>':'Stock disponible: '+fmtInt(stock)}</div><div class="store-product-actions">${out?'':`<select id="storeQty-${esc(product.sku)}">${Array.from({length:Math.min(stock,20)},(_,i)=>'<option value="'+(i+1)+'">'+(i+1)+'</option>').join('')}</select><button class="btn sm" data-store-add="${esc(product.sku)}">${ICONS.plus} Agregar</button>`}</div></div></article>`;
+    }).join('')}</div>`:`<div class="card empty">${ICONS.empty}<div class="t">Todavía no hay productos publicados</div><div>El catálogo se genera al guardar el inventario.</div></div>`}`;
+  $('#openOnlineCart').onclick=openOnlineCart;
+  $all('[data-store-add]').forEach(button=>button.onclick=()=>addOnlineProduct(button.dataset.storeAdd, document.getElementById('storeQty-'+button.dataset.storeAdd).value));
+}
+function openOnlineCart(){
+  const total=onlineCartTotal();
+  openModal(`<div class="modal-head"><h3>${ICONS.cart} Carrito online</h3><button class="icon-btn" id="closeOnlineCart">${ICONS.close}</button></div><div class="modal-body">${onlineCart.length?`<div class="store-cart-lines">${onlineCart.map(item=>`<div class="store-cart-line"><div><div class="name">${esc(item.name)}</div><div class="muted" style="font-size:11px;">${fmt(item.price)} c/u</div></div><div class="qty-ctrl"><button data-online-qty="${esc(item.sku)}" data-delta="-1">−</button><input data-online-input="${esc(item.sku)}" type="number" min="1" max="${Math.max(1,item.stock)}" value="${item.qty}"><button data-online-qty="${esc(item.sku)}" data-delta="1">+</button></div><button class="icon-btn" data-online-remove="${esc(item.sku)}">${ICONS.trash}</button></div>`).join('')}</div><div class="store-cart-total"><span>Total</span><span>${fmt(total)}</span></div>`:'<div class="empty" style="padding:20px 0;">El carrito está vacío.</div>'}</div><div class="modal-foot"><button class="btn secondary" id="continueOnline">Seguir viendo</button><button class="btn" id="finishOnline" ${onlineCart.length?'':'disabled'}>${ICONS.whatsapp} Finalizar pedido</button></div>`);
+  $('#closeOnlineCart').onclick=closeModal; $('#continueOnline').onclick=closeModal;
+  $all('[data-online-qty]').forEach(button=>button.onclick=()=>updateOnlineQty(button.dataset.onlineQty, Number(button.dataset.delta)));
+  $all('[data-online-input]').forEach(input=>input.onchange=()=>setOnlineQty(input.dataset.onlineInput,input.value));
+  $all('[data-online-remove]').forEach(button=>button.onclick=()=>{onlineCart=onlineCart.filter(item=>item.sku!==button.dataset.onlineRemove);saveOnlineCart();openOnlineCart();refreshOnlineStore();});
+  $('#finishOnline').onclick=finishOnlineOrder;
+}
+function setOnlineQty(sku,value){ const item=onlineCart.find(x=>x.sku===sku); if(!item) return; item.qty=Math.max(1,Math.min(Number(item.stock)||1,Math.floor(Number(value)||1))); saveOnlineCart(); openOnlineCart(); refreshOnlineStore(); }
+function updateOnlineQty(sku,delta){ const item=onlineCart.find(x=>x.sku===sku); if(!item) return; if(item.qty+delta<=0){onlineCart=onlineCart.filter(x=>x.sku!==sku);saveOnlineCart();openOnlineCart();refreshOnlineStore();return;} setOnlineQty(sku,item.qty+delta); }
+function finishOnlineOrder(){
+  if(!onlineCart.length) return;
+  const store=isClientAccess()?PUBLIC_STOREFRONT:APP_SETTINGS;
+  const phone=String(store.businessPhone||'').replace(/\D/g,'');
+  if(!phone){ toast('Configurá el teléfono de WhatsApp del negocio antes de finalizar pedidos.',true); return; }
+  if(!store.mpAlias){ toast('Configurá el alias de Mercado Pago antes de finalizar pedidos.',true); return; }
+  const detail=onlineCart.map(item=>`• ${item.name} x${item.qty} — ${fmt(item.price*item.qty)}`).join('\n');
+  const message=`Hola, quiero realizar este pedido:\n\n${detail}\n\nTotal: ${fmt(onlineCartTotal())}\n\nAlias de Mercado Pago: ${store.mpAlias}`;
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(message),'_blank','noopener');
+}
+function renderClientPortal(){
+  const portal=$('#clientPortal'); if(!portal) return;
+  const count=onlineCart.reduce((sum,item)=>sum+item.qty,0);
+  portal.style.display='block';
+  portal.innerHTML=`<header class="client-header"><div><strong>${esc(PUBLIC_STOREFRONT.businessName||'Inhala&Co')}</strong><span>Tienda online</span></div><button class="btn store-cart-btn" id="clientCart">${ICONS.cart} Carrito${count?' ('+count+')':''}</button></header><main class="client-main"><div class="card store-hero"><div><h2>Productos disponibles</h2><p>Elegí tus productos y enviá el pedido por WhatsApp.</p></div></div>${PUBLIC_CATALOG.length?`<div class="store-grid">${PUBLIC_CATALOG.map(product=>{const stock=Math.max(0,Number(product.stock)||0),out=stock<=0;return `<article class="card store-product${out?' out':''}"><div class="store-product-image">${productThumb(product,132)}</div><div class="store-product-body"><div class="store-product-name">${esc(product.name)}</div><div class="store-product-price">${fmt(product.price)}</div><div class="store-product-meta">${out?'<span class="badge out">Sin stock</span>':'Stock disponible: '+fmtInt(stock)}</div><div class="store-product-actions">${out?'':`<select id="clientQty-${esc(product.sku)}">${Array.from({length:Math.min(stock,20)},(_,i)=>'<option value="'+(i+1)+'">'+(i+1)+'</option>').join('')}</select><button class="btn sm" data-client-add="${esc(product.sku)}">${ICONS.plus} Agregar</button>`}</div></div></article>`;}).join('')}</div>`:`<div class="card empty">${ICONS.empty}<div class="t">No hay productos disponibles</div></div>`}</main>`;
+  $('#clientCart').onclick=openOnlineCart;
+  $all('[data-client-add]').forEach(button=>button.onclick=()=>addOnlineProduct(button.dataset.clientAdd,document.getElementById('clientQty-'+button.dataset.clientAdd).value));
 }
 
 /* ================= DASHBOARD ================= */
@@ -2429,6 +2547,8 @@ function renderConfiguracion(){
           <div><label class="field-label" for="bizPhone">Teléfono</label><input id="bizPhone" style="width:100%;" placeholder="Opcional" value="${esc(APP_SETTINGS.businessPhone)}"></div>
           <div><label class="field-label" for="bizTaxId">CUIT / RUT</label><input id="bizTaxId" style="width:100%;" placeholder="Opcional" value="${esc(APP_SETTINGS.businessTaxId)}"></div>
         </div>
+        <label class="field-label" for="mpAlias" style="margin-top:12px;">Alias de Mercado Pago</label>
+        <input id="mpAlias" style="width:100%;" maxlength="120" placeholder="Ej: inhala.mercadopago" value="${esc(APP_SETTINGS.mpAlias)}">
       </section>
       <section class="card settings-card">
         <div class="strong">Formato de impresión</div>
@@ -2471,6 +2591,7 @@ function renderConfiguracion(){
       businessAddress:$('#bizAddress').value.trim(),
       businessPhone:$('#bizPhone').value.trim(),
       businessTaxId:$('#bizTaxId').value.trim(),
+      mpAlias:$('#mpAlias').value.trim(),
       ticketWidth:$('#ticketWidth').value,
       ticketFooter:$('#ticketFooter').value
     };
@@ -3087,22 +3208,37 @@ function openSaleEditor(id){
   draw();
 }
 
-/* ================= INIT ================= */
-// Acceso libre: no hay formulario de login. La conexión anónima es automática.
-window.addEventListener('inhala-auth-required', () => {
-  const msg = document.getElementById('loadingMessage');
-  if(msg) msg.textContent = 'Conectando…';
-});
-window.addEventListener('inhala-authenticated', () => {
-  const msg = document.getElementById('loadingMessage');
-  if(msg) msg.textContent = 'Cargando datos…';
-});
-window.addEventListener('inhala-auth-error', () => {
-  const msg = document.getElementById('loadingMessage');
-  if(msg) msg.textContent = 'No se pudo conectar. Revisá tu conexión a internet.';
-});
-async function init(){
+/* ================= ACCESOS E INICIO ================= */
+let personalStarted=false;
+function accessMode(){ return new URLSearchParams(window.location.search).get('access'); }
+function setAccess(mode){ const url=new URL(window.location.href); url.searchParams.set('access',mode); window.location.href=url.toString(); }
+function applyAccessBackground(){
+  const gate=$('#accessGate'); if(!gate) return;
+  const url=safeImageUrl(PUBLIC_STOREFRONT.coverUrl,'');
+  gate.style.backgroundImage=url ? cssImageUrl(url) : 'linear-gradient(135deg,var(--green-950),var(--green-700))';
+}
+function renderAccessGate(login){
+  const gate=$('#accessGate'); gate.style.display='flex'; $('#loadingScreen').style.display='none';
+  applyAccessBackground();
+  gate.innerHTML=login?`<div class="access-login"><h2>Acceso de personal</h2><label class="field-label" for="staffEmail" style="margin-top:16px;">Email</label><input id="staffEmail" type="email" autocomplete="email" style="width:100%;" required><label class="field-label" for="staffPassword" style="margin-top:12px;">Contraseña</label><input id="staffPassword" type="password" autocomplete="current-password" style="width:100%;" required><div class="hint" id="staffLoginError" style="color:var(--red);"></div><button class="btn" id="staffLogin">Ingresar</button><button class="btn secondary" id="backAccess" style="width:100%;justify-content:center;margin-top:10px;">Volver</button></div>`:`<div class="access-gate-box"><button class="access-admin-trigger" id="staffAccess" aria-label="Acceso de personal"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.5 3.5C12.6 3.9 6.9 7.3 4.4 13.2c-1 2.4-1.1 4.8-1.1 6.1 1.6-.1 4.1-.4 6.5-1.6 5.7-2.8 9-8.2 10.7-14.2ZM6.2 17.8c2.7-4.1 6.1-7.4 10.6-10.1-3.6 3-6.2 6.6-8.7 10.7l-1.9-.6Z"/></svg></button><h1>Inhala&Co</h1><div class="access-options"><button class="access-option" id="customerAccess">${ICONS.store}<strong>Cliente</strong></button></div></div>`;
+  if(login){
+    $('#staffLogin').onclick=async()=>{ const email=$('#staffEmail').value.trim(), password=$('#staffPassword').value; if(!email||!password){$('#staffLoginError').textContent='Completá email y contraseña.';return;} try{const cloud=await waitForCloud();await cloud.signInPersonal(email,password);}catch(error){$('#staffLoginError').textContent='No se pudo iniciar sesión. Verificá los datos y que Email/Password esté habilitado en Firebase.';} };
+    $('#backAccess').onclick=()=>{ const url=new URL(window.location.href);url.searchParams.delete('access');window.location.href=url.toString(); };
+  }else{ $('#customerAccess').onclick=()=>setAccess('cliente'); $('#staffAccess').onclick=()=>setAccess('personal'); }
+}
+async function initClient(){
+  onlineCart=await storageGet('inhala_online_cart') || [];
+  CLOUD=await waitForCloud();
+  startCatalogSync();
+  $('#loadingScreen').style.display='none';
+  renderClientPortal();
+}
+async function initPersonal(){
+  if(personalStarted) return; personalStarted=true;
+  $('#accessGate').style.display='none';
+  document.getElementById('loadingScreen').style.display='flex';
   APP_SETTINGS = normalizeAppSettings(await storageGet('inhala_settings'));
+  onlineCart = await storageGet('inhala_online_cart') || [];
   await loadSyncQueue();
   applyAppearance();
   await loadData();
@@ -3113,13 +3249,20 @@ async function init(){
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   startCloudSync();
+  startCatalogSync();
+  CLOUD.saveStorefront(APP_SETTINGS).catch(error=>console.warn('No se pudo publicar la información de tienda',error));
   await startSheetSync();
   updateSyncIndicator();
   processSyncQueue();
 }
+window.addEventListener('inhala-auth-required', () => { if(accessMode()==='personal') renderAccessGate(true); });
+window.addEventListener('inhala-authenticated', () => { if(accessMode()==='personal') initPersonal(); });
 window.addEventListener('online', ()=>{ syncState.online=true; updateSyncIndicator(); pullInventoryFromSheet(false); processSyncQueue(); });
 window.addEventListener('offline', ()=>{ syncState.online=false; updateSyncIndicator(); });
-init();
+function loadPublicAccessAppearance(){ waitForCloud().then(cloud=>{ if(cloud.subscribeStorefront) cloud.subscribeStorefront(data=>{ PUBLIC_STOREFRONT={businessName:String(data.businessName||'Inhala&Co'),businessPhone:String(data.businessPhone||''),mpAlias:String(data.mpAlias||''),coverUrl:String(data.coverUrl||'')}; applyAccessBackground(); }); }); }
+if(accessMode()==='cliente') initClient();
+else if(accessMode()==='personal') { renderAccessGate(true); loadPublicAccessAppearance(); }
+else { renderAccessGate(false); loadPublicAccessAppearance(); }
 
 })();
 
