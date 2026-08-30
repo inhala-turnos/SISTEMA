@@ -483,7 +483,7 @@
 </script>
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
-  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
   import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 
   const firebaseConfig = {
@@ -510,6 +510,12 @@
 
   // El área de personal requiere una cuenta Firebase autorizada. Cliente no autentica.
   if(accessMode==='personal') onAuthStateChanged(auth, user => {
+    // Las sesiones anónimas heredadas del panel antiguo no pueden acceder al área privada.
+    if(user && user.isAnonymous){
+      currentUser=null;
+      signOut(auth).finally(() => window.dispatchEvent(new Event('inhala-auth-required')));
+      return;
+    }
     currentUser = user || null;
     if(currentUser){ userResolver(currentUser); window.dispatchEvent(new Event('inhala-authenticated')); }
     else window.dispatchEvent(new Event('inhala-auth-required'));
