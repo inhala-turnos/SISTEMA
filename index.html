@@ -349,12 +349,13 @@
   .store-cart-btn{background:#fff;color:var(--green-800);border:0;white-space:nowrap;}
   .store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
   .store-product{overflow:hidden;display:flex;flex-direction:column;}.store-product.out{opacity:.65;filter:grayscale(.15);}
-  .store-product-image{height:170px;background:var(--green-50);display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--line);}
+  .store-product-image{height:170px;background:var(--green-50);display:flex;align-items:center;justify-content:center;border:0;border-bottom:1px solid var(--line);cursor:zoom-in;}
   .store-product-image .thumb-img{width:132px!important;height:132px!important;border-radius:12px;}
-  .store-product-body{padding:14px;display:flex;flex:1;flex-direction:column;gap:8px;}.store-product-name{font-size:14px;font-weight:800;line-height:1.25;}
+  .store-product-body{padding:14px;display:flex;flex:1;flex-direction:column;gap:8px;}.store-product-name{font-size:14px;font-weight:800;line-height:1.25;cursor:pointer;}.store-product-name:hover{text-decoration:underline;color:var(--green-800);}
   .store-product-price{font-size:17px;font-weight:900;color:var(--green-700);}.store-product-meta{font-size:12px;color:var(--ink-soft);}
   .store-product-actions{display:flex;gap:8px;align-items:center;margin-top:auto;padding-top:4px;}.store-product-actions select{width:58px;padding:8px 6px;}
   .store-product-variants{display:flex;flex-direction:column;gap:4px;}.store-variant-label{font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}.store-variant-select{width:100%;padding:8px 10px;font-size:12.5px;font-weight:700;background:var(--surface);border:1px solid var(--line);border-radius:8px;}
+  .product-detail{display:grid;grid-template-columns:minmax(190px,.95fr) minmax(0,1.15fr);gap:22px;align-items:start;}.product-detail-image{min-height:280px;padding:20px;background:var(--green-50);border:1px solid var(--green-100);border-radius:12px;display:flex;align-items:center;justify-content:center;}.product-detail-image img{width:min(100%,310px);height:auto;max-height:360px;object-fit:contain;border-radius:10px;}.product-detail-name{margin:0 0 7px;font-size:21px;line-height:1.18;color:var(--green-900);}.product-detail-price{font-size:24px;font-weight:900;color:var(--green-700);margin-bottom:15px;}.product-detail-specs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:18px;}.product-detail-spec{padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);}.product-detail-spec span{display:block;font-size:10px;font-weight:800;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}.product-detail-spec strong{font-size:13px;color:var(--ink);overflow-wrap:anywhere;}
   .store-cart-lines{display:flex;flex-direction:column;gap:11px;}.store-cart-line{display:grid;grid-template-columns:minmax(0,1fr) auto 28px;gap:8px;align-items:center;padding-bottom:11px;border-bottom:1px solid var(--line);}.store-cart-line:last-child{border-bottom:0;padding-bottom:0;}.store-cart-line .name{font-size:13px;font-weight:700;}.store-cart-total{display:flex;justify-content:space-between;font-size:18px;font-weight:900;padding-top:13px;border-top:1px solid var(--green-100);}
   .client-catalog-search{margin:0 0 16px;background:#fff;}.client-catalog-layout{display:grid;grid-template-columns:225px minmax(0,1fr);gap:26px;align-items:start;}.client-category-sidebar{position:sticky;top:88px;overflow:auto;max-height:calc(100vh - 112px);padding:12px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 14px rgba(15,43,30,.05);}.client-category-sidebar h2{margin:2px 8px 10px;color:var(--ink-soft);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;}.client-category-sidebar button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;padding:10px 9px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:700;text-align:left;line-height:1.2;cursor:pointer;}.client-category-sidebar button:hover,.client-category-sidebar button:focus{background:var(--green-50);color:var(--green-800);outline:0;}.client-category-sidebar button.active{background:var(--green-700);color:#fff;}.client-category-sidebar .category-count{color:var(--ink-faint);font-size:11px;font-weight:800;}.client-category-sidebar button.active .category-count{color:#d9f0e1;}.client-category-section{scroll-margin-top:88px;margin:0 0 30px;}.client-category-title{display:flex;align-items:center;gap:10px;margin:0 0 12px;color:var(--green-900);font-size:19px;font-weight:900;}.client-category-title::after{content:'';height:1px;flex:1;background:var(--green-200);}.client-cart-fixed{position:fixed;right:max(18px,calc((100vw - 1180px)/2));bottom:max(18px,env(safe-area-inset-bottom));z-index:90;box-shadow:0 12px 28px rgba(11,57,37,.28);}.client-main{padding-bottom:105px;}
   .catalog-pagination .btns{display:flex; gap:7px;}
@@ -405,7 +406,7 @@
     .cart-columns{display:none;}
     .cart-item{grid-template-columns:minmax(0,1fr) 92px 28px; gap:8px;}
     .cart-unit{display:none;}
-    .store-hero{padding:16px;align-items:flex-start;}.store-hero h2{font-size:18px;}.store-cart-btn{font-size:0;padding:10px;}.store-cart-btn svg{margin:0;}.store-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.store-product-image{height:128px;}.store-product-image .thumb-img{width:98px!important;height:98px!important;}.store-product-body{padding:11px;gap:6px;}.store-product-name{font-size:13px;}.store-product-price{font-size:15px;}.store-product-actions{flex-direction:column;align-items:stretch;}.store-product-actions select{width:100%;}
+    .store-hero{padding:16px;align-items:flex-start;}.store-hero h2{font-size:18px;}.store-cart-btn{font-size:0;padding:10px;}.store-cart-btn svg{margin:0;}.store-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.store-product-image{height:128px;}.store-product-image .thumb-img{width:98px!important;height:98px!important;}.store-product-body{padding:11px;gap:6px;}.store-product-name{font-size:13px;}.store-product-price{font-size:15px;}.store-product-actions{flex-direction:column;align-items:stretch;}.store-product-actions select{width:100%;}.product-detail{grid-template-columns:1fr;gap:14px;}.product-detail-image{min-height:220px;padding:14px;}.product-detail-image img{max-height:250px;}.product-detail-name{font-size:19px;}.product-detail-specs{gap:7px;}
     .access-options{grid-template-columns:1fr;}.access-gate h1{font-size:25px;}.client-header{padding:14px;}.client-main{padding:18px 12px 105px;}.client-catalog-layout{grid-template-columns:1fr;gap:16px;}.client-category-sidebar{position:relative;top:auto;max-height:none;display:flex;gap:5px;overflow-x:auto;padding:7px;white-space:nowrap;}.client-category-sidebar h2{display:none;}.client-category-sidebar button{flex:0 0 auto;width:auto;padding:8px 10px;}.client-category-section{scroll-margin-top:76px;margin-bottom:24px;}.client-category-title{font-size:17px;}.client-cart-fixed{right:14px;bottom:max(14px,env(safe-area-inset-bottom));font-size:13px;}
     .cart-subtotal{grid-column:2; grid-row:1; font-size:13px;}
     .qty-ctrl{grid-column:2; grid-row:2;}
@@ -1178,12 +1179,14 @@ function catalogGroups(products){
   products.forEach(product=>{
     const presentation=productPresentation(product);
     const category=String(product.category||'Sin categoría').trim()||'Sin categoría';
-    const key=[normalizedText(presentation.baseName), normalizedText(category)].join('|');
+    const key=[normalizedText(presentation.baseName), normalizedText(product.brand||''), normalizedText(category)].join('|');
     if(!groups.has(key)) groups.set(key,{key, baseName:presentation.baseName, category, items:[]});
     groups.get(key).items.push({...product, presentation});
   });
   return [...groups.values()].map(group=>{
-    group.items.sort((a,b)=>a.presentation.pack-b.presentation.pack || a.sku.localeCompare(b.sku));
+    sortPresentationItems(group.items);
+    group.displayName=groupDisplayName(group);
+    group.primary=group.items[0];
     group.image=(group.items.find(item=>item.image)||group.items[0]).image||'';
     return group;
   });
@@ -1194,15 +1197,15 @@ function qtyOptionsHtml(stock){ return Array.from({length:Math.min(Math.max(0,Ma
 // actualiza precio, stock y cantidad sin cambiar la imagen (es el mismo producto).
 function storeProductCard(group, prefix){
   const items=group.items;
-  const defaultItem=items.find(item=>Number(item.stock)>0)||items[0];
+  const defaultItem=group.primary||items[0];
   const hasVariants=items.length>1;
   const out=Number(defaultItem.stock)<=0;
   const cardId=esc(items[0].sku);
   const thumbSource={...defaultItem, image:group.image};
   return `<article class="card store-product${out?' out':''}" data-${prefix}-card="${cardId}" data-active-sku="${esc(defaultItem.sku)}">
-    <div class="store-product-image">${productThumb(thumbSource,132)}</div>
+    <button class="store-product-image" type="button" data-${prefix}-detail="${cardId}" aria-label="Ver detalle de ${esc(group.displayName||group.baseName)}">${productThumb(thumbSource,132)}</button>
     <div class="store-product-body">
-      <div class="store-product-name">${esc(group.baseName)}</div>
+      <div class="store-product-name" role="button" tabindex="0" data-${prefix}-detail="${cardId}">${esc(group.displayName||group.baseName)}</div>
       <div class="store-product-price" data-${prefix}-price>${fmt(defaultItem.price)}</div>
       <div class="store-product-meta" data-${prefix}-meta>${out?'<span class="badge out">Sin stock</span>':'Stock disponible: '+fmtInt(Math.max(0,Number(defaultItem.stock)||0))}</div>
       ${hasVariants?`<div class="store-product-variants">
@@ -1217,6 +1220,16 @@ function storeProductCard(group, prefix){
     </div>
   </article>`;
 }
+function openStoreProductDetail(sku){
+  const product=PUBLIC_CATALOG.find(item=>item.sku===sku);
+  if(!product) return;
+  const stock=Math.max(0,Number(product.stock)||0);
+  const saleUnit=product.soldByWeight?'Por peso (kg)':'Por unidad';
+  const displayStock=product.soldByWeight?formatWeightKg(stock):fmtInt(stock)+' '+(stock===1?'unidad':'unidades');
+  const imageSrc=product.image?esc(product.image):IMG_FALLBACK;
+  showModal(`<div class="modal-head"><h3>Detalle del producto</h3><button class="icon-btn" data-close>${ICONS.close}</button></div><div class="modal-body"><div class="product-detail"><div class="product-detail-image"><img src="${imageSrc}" alt="${esc(product.name)}" onerror="this.onerror=null;this.src='${IMG_FALLBACK}';"></div><div><h2 class="product-detail-name">${esc(product.name)}</h2><div class="product-detail-price">${formatUnitPrice(product)}</div><div class="product-detail-specs"><div class="product-detail-spec"><span>Categoría</span><strong>${esc(product.category||'Sin categoría')}</strong></div><div class="product-detail-spec"><span>Marca</span><strong>${esc(product.brand||'No especificada')}</strong></div><div class="product-detail-spec"><span>Presentación</span><strong>${esc(saleUnit)}</strong></div><div class="product-detail-spec"><span>Disponibilidad</span><strong>${stock>0?displayStock:'Sin stock'}</strong></div>${product.provider?`<div class="product-detail-spec"><span>Proveedor</span><strong>${esc(product.provider)}</strong></div>`:''}</div>${stock>0?`<button class="btn" id="detailAddProduct">${ICONS.plus} Agregar al carrito</button>`:''}</div></div></div><div class="modal-foot"><button class="btn secondary" data-close>Cerrar</button></div>`);
+  const add=$('#detailAddProduct'); if(add) add.onclick=()=>{ addOnlineProduct(product.sku,1); closeModal(); };
+}
 // Conecta el selector de presentación y el botón "Agregar" de cada tarjeta ya insertada en el DOM.
 function bindStoreCards(rootEl, prefix, groups){
   const groupMap=new Map(groups.map(group=>[String(group.items[0].sku), group]));
@@ -1227,6 +1240,10 @@ function bindStoreCards(rootEl, prefix, groups){
   rootEl.querySelectorAll(`[data-${prefix}-card]`).forEach(article=>{
     const cardId=article.getAttribute(`data-${prefix}-card`);
     wireAddButton(article,cardId);
+    article.querySelectorAll(`[data-${prefix}-detail]`).forEach(trigger=>{
+      trigger.onclick=()=>openStoreProductDetail(article.dataset.activeSku);
+      if(trigger.getAttribute('role')==='button') trigger.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openStoreProductDetail(article.dataset.activeSku); } };
+    });
   });
   rootEl.querySelectorAll(`[data-${prefix}-variant]`).forEach(select=>{
     const cardId=select.getAttribute(`data-${prefix}-variant`);
@@ -1260,7 +1277,7 @@ function addOnlineProduct(sku, qty){
 function renderTienda(){
   const el=$('#view-tienda');
   const count=onlineCart.reduce((sum,item)=>sum+item.qty,0);
-  const groups=catalogGroups(PUBLIC_CATALOG).sort((a,b)=>a.baseName.localeCompare(b.baseName,'es'));
+  const groups=catalogGroups(PUBLIC_CATALOG).sort((a,b)=>(a.displayName||a.baseName).localeCompare(b.displayName||b.baseName,'es'));
   el.innerHTML=`
     <div class="card store-hero"><div><h2>Catálogo online</h2><p>Los precios y el stock se actualizan desde el inventario.</p></div><button class="btn store-cart-btn" id="openOnlineCart">${ICONS.cart} Carrito${count?' ('+count+')':''}</button></div>
     ${groups.length?`<div class="store-grid">${groups.map(group=>storeProductCard(group,'store')).join('')}</div>`:`<div class="card empty">${ICONS.empty}<div class="t">Todavía no hay productos publicados</div><div>El catálogo se genera al guardar el inventario.</div></div>`}`;
@@ -1295,7 +1312,7 @@ function renderClientPortal(){
   if(clientCategoryFilter!=='all'&&!categories.includes(clientCategoryFilter)) clientCategoryFilter='all';
   const searchText=normalizeSearchText(clientCatalogSearch);
   const allGroups=catalogGroups(PUBLIC_CATALOG);
-  const categoryGroups=category=>allGroups.filter(group=>group.category===category).filter(group=>!searchText||normalizeSearchText(group.baseName).includes(searchText)||group.items.some(item=>normalizeSearchText(item.name).includes(searchText))).sort((a,b)=>a.baseName.localeCompare(b.baseName,'es'));
+  const categoryGroups=category=>allGroups.filter(group=>group.category===category).filter(group=>!searchText||normalizeSearchText(group.displayName||group.baseName).includes(searchText)||group.items.some(item=>normalizeSearchText(item.name).includes(searchText))).sort((a,b)=>(a.displayName||a.baseName).localeCompare(b.displayName||b.baseName,'es'));
   const visibleCategories=(clientCategoryFilter==='all'?categories:categories.filter(category=>category===clientCategoryFilter)).filter(category=>categoryGroups(category).length);
   const totalGroupCount=allGroups.length;
   const categoryNavigation=categories.length?`<aside class="client-category-sidebar" aria-label="Filtros de categoría"><h2>Categorías</h2><button type="button" class="${clientCategoryFilter==='all'?'active':''}" data-client-category="all"><span>Todas las categorías</span><span class="category-count">${fmtInt(totalGroupCount)}</span></button>${categories.map(category=>`<button type="button" class="${clientCategoryFilter===category?'active':''}" data-client-category="${esc(category)}"><span>${esc(category)}</span><span class="category-count">${fmtInt(allGroups.filter(group=>group.category===category).length)}</span></button>`).join('')}</aside>`:'';
@@ -1493,36 +1510,92 @@ function filteredProducts(){
   return list;
 }
 
-// Agrupa presentaciones aunque el pack esté antes de la marca/proveedor.
-// Ej.: "PASTA X 370 GRS X 30 - ENTRENU(T)S" y "PASTA X 370 GRS X 1U - ENTRENU(T)S".
+// Detecta la presentación sin depender de que el dato esté al final del nombre.
+// Ejemplos cubiertos: "50 GR", "x150grs", "1u", "3 unidades", "60 G 10 UNIDADES",
+// "500 ml", "2 L". La identidad se forma quitando solo estos datos variables.
 function productPresentation(product){
-  const name=String(product.name||'').trim();
-  // Solo toma una cantidad de presentación si termina antes de un separador o el final.
-  // Así "X 370 GRS" queda como parte del producto y "X 30 - Marca" se toma como pack.
-  const pattern=/\s*[x×]\s*(\d+)\s*(?:u(?:n(?:id(?:ad(?:es)?)?)?)?|unidades?|unid(?:ades)?|pack)?(?=\s*(?:[-–—]|$))/gi;
-  let match=null, found;
-  while((found=pattern.exec(name))) match=found;
-  if(!match) return {baseName:name, pack:1, label:'Unidad'};
-  const pack=Math.max(1,Number(match[1])||1);
-  const baseName=(name.slice(0,match.index)+name.slice(match.index+match[0].length))
-    .replace(/\s{2,}/g,' ').replace(/\s*([-–—])\s*/g,' $1 ').trim();
-  return {baseName, pack, label:pack===1?'Unidad':`Pack x${pack}`};
+  const name=String(product.name||'').trim().replace(/\s+/g,' ');
+  const measures=[];
+  const packs=[];
+  const measurePattern=/(?:\b[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kgs|kilo(?:s)?|g|gr|grs|gramo(?:s)?|mg|ml|cc|l|lt|lts|litro(?:s)?)\b/gi;
+  const packPattern=/(?:\b[x×]\s*)?(\d+)\s*(u(?:n(?:id(?:ad(?:es)?)?)?)?|unidades?|unid(?:ades)?|pack(?:s)?|uds?|barras?|barritas?|capsulas?|cápsulas?|sobres?|bolsas?|tabletas?|pastillas?|porciones?)\b/gi;
+  const terminalPackPattern=/\b[x×]\s*(\d+)(?=\s*(?:[-–—]|$))/gi;
+  let found;
+  while((found=measurePattern.exec(name))){
+    const value=Number(String(found[1]).replace(',','.'))||0;
+    const unit=found[2].toLowerCase();
+    const normalizedUnit=/^(kg|kgs|kilo)/.test(unit)?'kg':/^(ml|cc|l|lt|lts|litro)/.test(unit)?'ml':'g';
+    const amount=normalizedUnit==='kg'?value*1000:normalizedUnit==='ml'&&/^(l|lt|lts|litro)/.test(unit)?value*1000:value;
+    measures.push({value:amount, label:`${String(found[1]).replace('.',',')} ${normalizedUnit==='kg'?'kg':normalizedUnit}`});
+  }
+  while((found=packPattern.exec(name))) packs.push(Math.max(1,Number(found[1])||1));
+  while((found=terminalPackPattern.exec(name))) packs.push(Math.max(1,Number(found[1])||1));
+  const pack=packs.length?Math.min(...packs):1;
+  // Nombre sin pack pero conservando el gramaje: se usa como título si es común a todo el grupo.
+  const withoutPack=name.replace(packPattern,' ').replace(terminalPackPattern,' ').replace(/\b(?:unidad|unitario)\b/gi,' ').replace(/\s{2,}/g,' ').trim();
+  const baseName=name.replace(measurePattern,' ').replace(packPattern,' ').replace(terminalPackPattern,' ').replace(/\b(?:unidad|unitario)\b/gi,' ')
+    .replace(/\b[x×]\b/gi,' ').replace(/\s+([,.;:])/g,'$1').replace(/\s{2,}/g,' ')
+    .replace(/\s*([-–—])\s*/g,' $1 ').trim();
+  const measureKey=measures.map(m=>`${m.value}${m.label.endsWith('ml')?'ml':'g'}`).sort().join('|');
+  const measureLabel=measures.map(m=>m.label).join(' · ');
+  const label=[measureLabel,pack>1?`Pack x${pack}`:''].filter(Boolean).join(' · ') || 'Unidad';
+  // Primero se prioriza unidad individual. Si no hay pack, se toma el menor gramaje/volumen.
+  const size=measures.length?Math.min(...measures.map(m=>m.value)):1;
+  return {baseName, pack, size, label, measureKey, withoutPack};
+}
+function sortPresentationItems(items){
+  return items.sort((a,b)=>a.presentation.pack-b.presentation.pack || a.presentation.size-b.presentation.size || a.sku.localeCompare(b.sku));
+}
+function groupDisplayName(group){
+  const names=new Set(group.items.map(item=>normalizedText(item.presentation.withoutPack)));
+  return names.size===1 ? group.items[0].presentation.withoutPack : group.baseName;
 }
 function groupedProducts(products){
   const groups=new Map();
   products.forEach(product=>{
     const presentation=productPresentation(product);
-    // La categoría no define una presentación: puede estar mal cargada en uno de los packs.
-    // Marca + nombre base evita unir productos diferentes con el mismo formato.
-    const key=[normalizedText(presentation.baseName), normalizedText(product.brand||'')].join('|');
+    // Marca y categoría son parte de la identidad: evita unir artículos distintos por error.
+    const key=[normalizedText(presentation.baseName), normalizedText(product.brand||''), normalizedText(product.category||'')].join('|');
     if(!groups.has(key)) groups.set(key,{key, baseName:presentation.baseName, items:[]});
     groups.get(key).items.push({...product, presentation});
   });
   return [...groups.values()].map(group=>{
-    group.items.sort((a,b)=>a.presentation.pack-b.presentation.pack || a.sku.localeCompare(b.sku));
+    sortPresentationItems(group.items);
+    group.displayName=groupDisplayName(group);
     group.primary=group.items[0];
     return group;
   });
+}
+// Busca similitudes que no se fusionan automáticamente. Solo compara grupos de la
+// misma marca y categoría, y exige una coincidencia alta de palabras relevantes.
+function findAmbiguousProductGroups(products){
+  const buckets=new Map();
+  groupedProducts(products).forEach(group=>{
+    const p=group.primary;
+    const key=[normalizedText(p.brand||''),normalizedText(p.category||'')].join('|');
+    if(!buckets.has(key)) buckets.set(key,[]);
+    buckets.get(key).push(group);
+  });
+  const cases=[];
+  buckets.forEach(groups=>{
+    for(let i=0;i<groups.length;i++) for(let j=i+1;j<groups.length;j++){
+      const left=new Set(normalizeSearchText(groups[i].baseName).split(' ').filter(word=>word.length>1));
+      const right=new Set(normalizeSearchText(groups[j].baseName).split(' ').filter(word=>word.length>1));
+      const shared=[...left].filter(word=>right.has(word)).length;
+      const larger=Math.max(left.size,right.size);
+      const differences=left.size+right.size-shared*2;
+      if(shared>=2 && larger>=3 && shared/larger>=0.72 && differences<=2){
+        cases.push({left:groups[i],right:groups[j]});
+        if(cases.length>=100) return;
+      }
+    }
+  });
+  return cases;
+}
+function openAmbiguousGroupsModal(){
+  const cases=findAmbiguousProductGroups(PRODUCTS);
+  const content=cases.length?`<div class="hint" style="margin:0 0 14px;">Estos nombres se parecen, pero no se unieron automáticamente porque contienen una diferencia de redacción. Revisalos antes de modificar el inventario.</div><div style="display:flex;flex-direction:column;gap:9px;">${cases.map((item,index)=>`<div class="card" style="padding:11px 12px;"><strong style="font-size:13px;">Caso ${index+1}</strong><div style="font-size:12px;line-height:1.45;margin-top:5px;">${esc(item.left.displayName||item.left.baseName)}<br>${esc(item.right.displayName||item.right.baseName)}</div><div class="muted" style="font-size:11px;margin-top:5px;">${esc(item.left.primary.brand||'Sin marca')} · ${esc(item.left.primary.category||'Sin categoría')}</div></div>`).join('')}</div>`:`<div class="empty" style="padding:20px 0;">No se detectaron coincidencias ambiguas.</div>`;
+  showModal(`<div class="modal-head"><h3>Coincidencias para revisar</h3><button class="icon-btn" data-close>${ICONS.close}</button></div><div class="modal-body">${content}</div><div class="modal-foot"><button class="btn secondary" data-close>Cerrar</button></div>`);
 }
 
 function renderProductos(){
@@ -1547,6 +1620,7 @@ function renderProductos(){
       <button class="btn catalog-action" id="btnImportInventory">${ICONS.upload} Importar inventario</button>
       <button class="btn catalog-action" id="btnExportInventory">${ICONS.download} Exportar inventario</button>
       <button class="btn catalog-action" id="btnBulkEdit">${ICONS.edit} Editar en lote</button>
+      <button class="btn catalog-action" id="btnReviewAmbiguities">Revisar coincidencias</button>
       <button class="btn catalog-action primary" id="btnNewProduct">${ICONS.plus} Nuevo producto</button>
     </div>
 
@@ -1613,7 +1687,7 @@ function renderProductos(){
     const margin=margins.length?margins.reduce((sum,item)=>sum+item,0)/margins.length:null;
     const presentationHtml=group.items.map((item,index)=>`<div class="presentation-card ${index===0?'principal':''}">
       ${index===0?'<span class="presentation-primary">Principal</span>':''}
-      <div class="presentation-kind"><span class="presentation-name">${item.presentation.pack===1?'1u':`${item.presentation.pack}u`}${item.soldByWeight?' · por kg':''}</span></div>
+      <div class="presentation-kind"><span class="presentation-name">${esc(item.presentation.label)}${item.soldByWeight?' · por kg':''}</span></div>
       <div class="presentation-data"><span class="presentation-field-label">Precio</span><input class="presentation-edit price" data-quick-field="price" data-sku="${esc(item.sku)}" type="text" inputmode="decimal" value="${fmt(item.price)}" aria-label="Precio de ${esc(item.presentation.label)}"></div>
       <div class="presentation-data"><span class="presentation-field-label">Stock</span><input class="presentation-edit stock" data-quick-field="stock" data-sku="${esc(item.sku)}" type="number" min="0" step="${item.soldByWeight?'0.001':'1'}" value="${Number(item.stock)||0}" aria-label="Stock de ${esc(item.presentation.label)}"></div>
     </div>`).join('');
@@ -1621,7 +1695,7 @@ function renderProductos(){
       <div class="product-group-check"><input type="checkbox" class="group-select" data-group-skus="${esc(skus)}" ${allSelected?'checked':''} title="Seleccionar presentaciones"></div>
       <div class="product-group-image">${productThumb(p,100)}</div>
       <div class="product-group-info">
-        <input class="product-name-edit" data-group-name="${esc(skus)}" value="${esc(group.baseName)}" aria-label="Nombre del producto">
+        <input class="product-name-edit" data-group-name="${esc(skus)}" value="${esc(group.displayName||group.baseName)}" aria-label="Nombre del producto">
         <div class="product-group-sub">${esc(p.brand||'Sin marca')} · ${esc(p.provider||'Sin proveedor')} ${categoryChip(p.category)}</div>
       </div>
       <div class="product-group-metrics">
@@ -1647,6 +1721,7 @@ function renderProductos(){
   $('#btnBulkPrice').onclick = () => openBulkPriceModal();
   if($('#btnBulkFromSelection')) $('#btnBulkFromSelection').onclick = () => openBulkPriceModal('sel');
   $('#btnBulkEdit').onclick = () => openBulkEditModal();
+  $('#btnReviewAmbiguities').onclick = openAmbiguousGroupsModal;
   if($('#btnBulkEditFromSelection')) $('#btnBulkEditFromSelection').onclick = () => openBulkEditModal('sel');
   if($('#btnClearSelection')) $('#btnClearSelection').onclick = () => { selectedSkus.clear(); renderProductos(); };
   $('#pPrev').onclick = () => { pf.page--; renderProductos(); };
@@ -2062,7 +2137,7 @@ function openBulkPriceModal(defaultScope){
   };
 }
 
-/* ---------- Edición masiva de datos por lote (categoría / marca / proveedor / imagen / unidad / stock mínimo) ---------- */
+/* ---------- Edición masiva de datos por lote (categoría / marca / proveedor / imagen / unidad / stock) ---------- */
 function openBulkEditModal(defaultScope){
   const cats = getCategories();
   const brandsList = getBrands().filter(b=>b!=='Sin marca');
@@ -2161,6 +2236,15 @@ function openBulkEditModal(defaultScope){
           </div>
         </div>
 
+        <div style="display:flex; align-items:flex-end; gap:10px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; flex:0 0 150px; padding-bottom:9px;">
+            <input type="checkbox" class="beToggle" data-field="stock"> Stock disponible
+          </label>
+          <div style="flex:1;">
+            <input id="beStock" type="number" min="0" step="1" style="width:100%;" placeholder="Ej: 20" disabled>
+          </div>
+        </div>
+
       </div>
 
       <div class="hint" id="bePreview" style="background:var(--green-50); border:1px solid var(--green-100); border-radius:8px; padding:10px 12px; color:var(--ink); margin-top:4px;"></div>
@@ -2173,7 +2257,7 @@ function openBulkEditModal(defaultScope){
 
   const fieldInputs = {
     category: $('#beCategory'), brand: $('#beBrand'), provider: $('#beProvider'),
-    image: $('#beImage'), minStock: $('#beMinStock')
+    image: $('#beImage'), minStock: $('#beMinStock'), stock: $('#beStock')
   };
 
   $all('.beToggle').forEach(chk => {
@@ -2201,7 +2285,7 @@ function openBulkEditModal(defaultScope){
     const catVal = $('#beScopeCatSelect') ? $('#beScopeCatSelect').value : '';
     const list = scopeProducts(scope, catVal);
     const activeFields = $all('.beToggle:checked').map(c => c.dataset.field);
-    const labels = {category:'categoría', brand:'marca', provider:'proveedor', image:'imagen', soldByWeight:'unidad de venta', minStock:'alerta de stock bajo'};
+    const labels = {category:'categoría', brand:'marca', provider:'proveedor', image:'imagen', soldByWeight:'unidad de venta', minStock:'alerta de stock bajo', stock:'stock disponible'};
     const p = $('#bePreview');
     if(!list.length){
       p.textContent = 'No hay productos en este grupo.';
@@ -2230,9 +2314,12 @@ function openBulkEditModal(defaultScope){
     const newSoldByWeight = $('#beUnitKg').checked;
     const newMinStockRaw = $('#beMinStock').value;
     const newMinStock = parseFloat(newMinStockRaw);
+    const newStockRaw = $('#beStock').value;
+    const newStock = parseFloat(newStockRaw);
 
     if(activeFields.includes('category') && !newCategory){ toast('Ingresá una categoría', true); return; }
     if(activeFields.includes('minStock') && (newMinStockRaw==='' || isNaN(newMinStock) || newMinStock<0)){ toast('Ingresá un valor válido para la alerta de stock bajo', true); return; }
+    if(activeFields.includes('stock') && (newStockRaw==='' || isNaN(newStock) || newStock<0)){ toast('Ingresá un valor válido para el stock', true); return; }
 
     const skuSet = new Set(list.map(p=>p.sku));
     PRODUCTS.forEach(p => {
@@ -2243,6 +2330,7 @@ function openBulkEditModal(defaultScope){
       if(activeFields.includes('image')) p.image = newImage;
       if(activeFields.includes('soldByWeight')) p.soldByWeight = newSoldByWeight;
       if(activeFields.includes('minStock')) p.minStock = newMinStock;
+      if(activeFields.includes('stock')) p.stock = p.soldByWeight ? newStock : Math.round(newStock);
     });
 
     await persistProducts();
