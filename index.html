@@ -1182,7 +1182,7 @@ function catalogGroups(products){
   products.forEach(product=>{
     const presentation=productPresentation(product);
     const category=String(product.category||'Sin categoría').trim()||'Sin categoría';
-    const key=[normalizedText(presentation.baseName), normalizedText(product.brand||''), normalizedText(category)].join('|');
+    const key=productGroupingKey(product,presentation,category);
     if(!groups.has(key)) groups.set(key,{key, baseName:presentation.baseName, category, items:[]});
     groups.get(key).items.push({...product, presentation});
   });
@@ -1550,15 +1550,22 @@ function sortPresentationItems(items){
   return items.sort((a,b)=>a.presentation.pack-b.presentation.pack || a.presentation.size-b.presentation.size || a.sku.localeCompare(b.sku));
 }
 function groupDisplayName(group){
+  const savedName=String(group.items[0]&&group.items[0].manualGroupName||'').trim();
+  if(savedName) return savedName;
   const names=new Set(group.items.map(item=>normalizedText(item.presentation.withoutPack)));
   return names.size===1 ? group.items[0].presentation.withoutPack : group.baseName;
+}
+function productGroupingKey(product,presentation,category){
+  const manual=String(product.manualGroupId||'').trim();
+  if(manual) return `manual|${manual}`;
+  return [normalizedText(presentation.baseName), normalizedText(product.brand||''), normalizedText(category!=null?category:product.category||'')].join('|');
 }
 function groupedProducts(products){
   const groups=new Map();
   products.forEach(product=>{
     const presentation=productPresentation(product);
     // Marca y categoría son parte de la identidad: evita unir artículos distintos por error.
-    const key=[normalizedText(presentation.baseName), normalizedText(product.brand||''), normalizedText(product.category||'')].join('|');
+    const key=productGroupingKey(product,presentation);
     if(!groups.has(key)) groups.set(key,{key, baseName:presentation.baseName, items:[]});
     groups.get(key).items.push({...product, presentation});
   });
@@ -1595,10 +1602,39 @@ function findAmbiguousProductGroups(products){
   });
   return cases;
 }
+async function associateProductGroups(left,right,displayName){
+  if(!left || !right || left.key===right.key){ toast('Seleccioná dos productos distintos',true); return; }
+  const skus=new Set([...left.items,...right.items].map(item=>item.sku));
+  const manualGroupId=`MG-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+  const name=String(displayName||left.displayName||left.baseName).trim();
+  PRODUCTS.forEach(product=>{
+    if(!skus.has(product.sku)) return;
+    product.manualGroupId=manualGroupId;
+    product.manualGroupName=name;
+  });
+  await persistProducts();
+  closeModal();
+  toast(`Se asociaron ${fmtInt(skus.size)} presentaciones`);
+  renderProductos();
+}
+function openManualAssociationModal(){
+  const groups=groupedProducts(PRODUCTS).slice().sort((a,b)=>(a.displayName||a.baseName).localeCompare(b.displayName||b.baseName,'es'));
+  const options=groups.map((group,index)=>`<option value="${index}">${esc(group.displayName||group.baseName)} · ${esc(group.primary.brand||'Sin marca')} · ${esc(group.primary.category||'Sin categoría')} (${group.items.length})</option>`).join('');
+  showModal(`<div class="modal-head"><h3>Asociar productos manualmente</h3><button class="icon-btn" data-close>${ICONS.close}</button></div><div class="modal-body"><div class="hint" style="margin:0;">Elegí dos productos o grupos. Sus variantes se mostrarán juntas como una sola tarjeta, sin modificar precios, stock ni SKU.</div><div><label class="field-label" for="manualAssociationA">Primer producto</label><select id="manualAssociationA" style="width:100%;"><option value="">Seleccioná un producto</option>${options}</select></div><div><label class="field-label" for="manualAssociationB">Segundo producto</label><select id="manualAssociationB" style="width:100%;"><option value="">Seleccioná un producto</option>${options}</select></div><div><label class="field-label" for="manualAssociationName">Nombre que se mostrará en la tarjeta</label><input id="manualAssociationName" style="width:100%;" placeholder="Se usa el nombre del primer producto si se deja vacío"></div></div><div class="modal-foot"><button class="btn secondary" id="backToAmbiguities">Volver</button><button class="btn" id="confirmManualAssociation">${ICONS.check} Asociar</button></div>`);
+  $('#backToAmbiguities').onclick=openAmbiguousGroupsModal;
+  $('#confirmManualAssociation').onclick=()=>{
+    const leftValue=$('#manualAssociationA').value, rightValue=$('#manualAssociationB').value;
+    if(leftValue==='' || rightValue===''){ toast('Elegí los dos productos a asociar',true); return; }
+    const left=groups[Number(leftValue)], right=groups[Number(rightValue)];
+    associateProductGroups(left,right,$('#manualAssociationName').value);
+  };
+}
 function openAmbiguousGroupsModal(){
   const cases=findAmbiguousProductGroups(PRODUCTS);
-  const content=cases.length?`<div class="hint" style="margin:0 0 14px;">Estos nombres se parecen, pero no se unieron automáticamente porque contienen una diferencia de redacción. Revisalos antes de modificar el inventario.</div><div style="display:flex;flex-direction:column;gap:9px;">${cases.map((item,index)=>`<div class="card" style="padding:11px 12px;"><strong style="font-size:13px;">Caso ${index+1}</strong><div style="font-size:12px;line-height:1.45;margin-top:5px;">${esc(item.left.displayName||item.left.baseName)}<br>${esc(item.right.displayName||item.right.baseName)}</div><div class="muted" style="font-size:11px;margin-top:5px;">${esc(item.left.primary.brand||'Sin marca')} · ${esc(item.left.primary.category||'Sin categoría')}</div></div>`).join('')}</div>`:`<div class="empty" style="padding:20px 0;">No se detectaron coincidencias ambiguas.</div>`;
-  showModal(`<div class="modal-head"><h3>Coincidencias para revisar</h3><button class="icon-btn" data-close>${ICONS.close}</button></div><div class="modal-body">${content}</div><div class="modal-foot"><button class="btn secondary" data-close>Cerrar</button></div>`);
+  const content=cases.length?`<div class="hint" style="margin:0 0 14px;">Cada caso se puede asociar de forma independiente. Los que no sean el mismo producto se dejan sin tocar.</div><div style="display:flex;flex-direction:column;gap:9px;">${cases.map((item,index)=>`<div class="card" style="padding:12px;"><strong style="font-size:13px;">Caso ${index+1}</strong><div style="font-size:12px;line-height:1.45;margin-top:6px;">${esc(item.left.displayName||item.left.baseName)}<br>${esc(item.right.displayName||item.right.baseName)}</div><div class="muted" style="font-size:11px;margin-top:5px;">${esc(item.left.primary.brand||'Sin marca')} · ${esc(item.left.primary.category||'Sin categoría')}</div><button class="btn sm" style="margin-top:10px;" data-associate-case="${index}">${ICONS.check} Asociar estas presentaciones</button></div>`).join('')}</div>`:`<div class="empty" style="padding:20px 0;">No se detectaron coincidencias ambiguas.</div>`;
+  showModal(`<div class="modal-head"><h3>Coincidencias para revisar</h3><button class="icon-btn" data-close>${ICONS.close}</button></div><div class="modal-body">${content}</div><div class="modal-foot"><button class="btn secondary" id="manualAssociation">Asociar otros productos</button><button class="btn secondary" data-close>Cerrar</button></div>`);
+  $all('[data-associate-case]').forEach(button=>button.onclick=()=>{ const item=cases[Number(button.dataset.associateCase)]; associateProductGroups(item.left,item.right); });
+  $('#manualAssociation').onclick=openManualAssociationModal;
 }
 
 function renderProductos(){
